@@ -51,6 +51,8 @@ void Initialise (void)
 {
 	VIDEO_Init ();
 	PAD_Init ();  
+
+	// TODO: replace this with an immediate command
 	DVD_Init(); 
 	DVD_InquiryAsync(&commandBlock, &driveInfo, driveInfoCallback);
 	
@@ -99,6 +101,10 @@ int main(int argc, char *argv[])
 	memset(&swissSettings, 0 , sizeof(SwissSettings));
 	strcpy(swissSettings.flattenDir, "*/games");
 
+	swissSettings.debugUSB = true;
+	if(usb_isgeckoalive(1)) usb_flush(1);
+	print_gecko("Welcome!\r\n");
+
 	// Register all devices supported (order matters for boot devices)
 	int i = 0;
 	for(i = 0; i < MAX_DEVICES; i++)
@@ -107,6 +113,7 @@ int main(int argc, char *argv[])
 	allDevices[i++] = &__device_wkf;
 	allDevices[i++] = &__device_wode;
 	allDevices[i++] = &__device_gcloader;
+	allDevices[i++] = &__device_flippydrive;
 	allDevices[i++] = &__device_ata_c;
 	allDevices[i++] = &__device_sd_c;
 	allDevices[i++] = &__device_sd_a;
@@ -135,7 +142,7 @@ int main(int argc, char *argv[])
 	
 	// Sane defaults
 	refreshSRAM(&swissSettings);
-	swissSettings.debugUSB = 0;
+	// swissSettings.debugUSB = 0;
 	swissSettings.exiSpeed = 1;		// 32MHz
 	swissSettings.uiVMode = 0; 		// Auto UI mode
 	swissSettings.gameVMode = 0;	// Auto video mode
@@ -154,7 +161,7 @@ int main(int argc, char *argv[])
 	needsRefresh = 1;
 	
 	//debugging stuff
-	if(swissSettings.debugUSB) {
+	if(swissSettings.debugUSB || true) {
 		if(usb_isgeckoalive(1)) {
 			usb_flush(1);
 		}
@@ -226,6 +233,9 @@ int main(int argc, char *argv[])
 			DVD_StopMotor(&commandBlock);
 		}
 	}
+	// else if () {
+	// 	find_existing_entry("fldr:/", true);
+	// }
 	else if(device == &__device_gcloader) {
 		if(gcloaderVersionStr != NULL) {
 			if(strverscmp(swissSettings.gcloaderTopVersion, gcloaderVersionStr) < 0 || swissSettings.gcloaderHwVersion != gcloaderHwVersion) {

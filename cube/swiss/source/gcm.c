@@ -213,6 +213,35 @@ u32 calc_elf_segments_size(file_handle *file, u32 file_offset, u32 *file_size) {
 	return size;
 }
 
+void DumpHex(const void* data, size_t size) {
+	char ascii[17];
+	size_t i, j;
+	ascii[16] = '\0';
+	for (i = 0; i < size; ++i) {
+		print_gecko("%02X ", ((unsigned char*)data)[i]);
+		if (((unsigned char*)data)[i] >= ' ' && ((unsigned char*)data)[i] <= '~') {
+			ascii[i % 16] = ((unsigned char*)data)[i];
+		} else {
+			ascii[i % 16] = '.';
+		}
+		if ((i+1) % 8 == 0 || i+1 == size) {
+			print_gecko(" ");
+			if ((i+1) % 16 == 0) {
+				print_gecko("|  %s \n", ascii);
+			} else if (i+1 == size) {
+				ascii[(i+1) % 16] = '\0';
+				if ((i+1) % 16 <= 8) {
+					print_gecko(" ");
+				}
+				for (j = (i+1) % 16; j < 16; ++j) {
+					print_gecko("   ");
+				}
+				print_gecko("|  %s \n", ascii);
+			}
+		}
+	}
+}
+
 // Returns the number of filesToPatch and fills out the filesToPatch array passed in (pre-allocated)
 int parse_gcm(file_handle *file, file_handle *file2, ExecutableFile *filesToPatch) {
 	char	filename[256];
@@ -237,6 +266,7 @@ int parse_gcm(file_handle *file, file_handle *file2, ExecutableFile *filesToPatc
 	filesToPatch[numFiles].size = sizeof(ApploaderHeader) + ((apploaderHeader.size + 31) & ~31) + ((apploaderHeader.rebootSize + 31) & ~31);
 	filesToPatch[numFiles].type = PATCH_APPLOADER;
 	sprintf(filesToPatch[numFiles].name, "apploader.img");
+	print_gecko("Found file to patch %s\n", filesToPatch[numFiles].name);
 	numFiles++;
 
 	if(diskHeader->DOLOffset != 0) {
@@ -249,17 +279,19 @@ int parse_gcm(file_handle *file, file_handle *file2, ExecutableFile *filesToPatc
 			filesToPatch[numFiles].fstOffset = diskHeader->FSTOffset;
 			filesToPatch[numFiles].fstSize = diskHeader->FSTSize;
 			sprintf(filesToPatch[numFiles].name, "default.bin");
+			print_gecko("Found file to patch %s\n", filesToPatch[numFiles].name);
 			numFiles++;
 		}
 		else {
 			// Multi-DOL games may re-load the main DOL, so make sure we patch it too.
 			// Calc size
-			DOLHEADER dolhdr;
+			ATTRIBUTE_ALIGN(32) DOLHEADER dolhdr;
 			devices[DEVICE_CUR]->seekFile(file,diskHeader->DOLOffset,DEVICE_HANDLER_SEEK_SET);
 			if(devices[DEVICE_CUR]->readFile(file,&dolhdr,DOLHDRLENGTH) != DOLHDRLENGTH) {
 				DrawPublish(DrawMessageBox(D_FAIL, "Failed to read Main DOL Header"));
 				while(1);
 			}
+			DumpHex(&dolhdr, DOLHDRLENGTH);
 			filesToPatch[numFiles].file = file;
 			filesToPatch[numFiles].offset = dolOffset = diskHeader->DOLOffset;
 			filesToPatch[numFiles].size = dolSize = DOLSize(&dolhdr);
@@ -268,6 +300,7 @@ int parse_gcm(file_handle *file, file_handle *file2, ExecutableFile *filesToPatc
 			filesToPatch[numFiles].fstOffset = diskHeader->FSTOffset;
 			filesToPatch[numFiles].fstSize = diskHeader->FSTSize;
 			sprintf(filesToPatch[numFiles].name, "default.dol");
+			print_gecko("Found file to patch %s\n", filesToPatch[numFiles].name);
 			numFiles++;
 		}
 	}
@@ -306,6 +339,7 @@ int parse_gcm(file_handle *file, file_handle *file2, ExecutableFile *filesToPatc
 				filesToPatch[numFiles].fstOffset = diskHeader->FSTOffset;
 				filesToPatch[numFiles].fstSize = diskHeader->FSTSize;
 				memcpy(&filesToPatch[numFiles].name,&filename[0],64); 
+				print_gecko("Found file to patch %s\n", filesToPatch[numFiles].name);
 				numFiles++;
 			}
 			if(!strcasecmp(filename,"switcher.prs")) {
@@ -316,6 +350,7 @@ int parse_gcm(file_handle *file, file_handle *file2, ExecutableFile *filesToPatc
 				filesToPatch[numFiles].fstOffset = diskHeader->FSTOffset;
 				filesToPatch[numFiles].fstSize = diskHeader->FSTSize;
 				memcpy(&filesToPatch[numFiles].name,&filename[0],64); 
+				print_gecko("Found file to patch %s\n", filesToPatch[numFiles].name);
 				numFiles++;
 			}
 			if(endsWith(filename,".elf")) {
@@ -331,6 +366,7 @@ int parse_gcm(file_handle *file, file_handle *file2, ExecutableFile *filesToPatc
 				filesToPatch[numFiles].fstOffset = diskHeader->FSTOffset;
 				filesToPatch[numFiles].fstSize = diskHeader->FSTSize;
 				memcpy(&filesToPatch[numFiles].name,&filename[0],64); 
+				print_gecko("Found file to patch %s\n", filesToPatch[numFiles].name);
 				numFiles++;
 			}
 			if(!strcasecmp(filename,"appl2.img") || !strcasecmp(filename,"appl2D.img")) {
@@ -339,6 +375,7 @@ int parse_gcm(file_handle *file, file_handle *file2, ExecutableFile *filesToPatc
 				filesToPatch[numFiles].size = size;
 				filesToPatch[numFiles].type = PATCH_APPLOADER;
 				memcpy(&filesToPatch[numFiles].name,&filename[0],64); 
+				print_gecko("Found file to patch %s\n", filesToPatch[numFiles].name);
 				numFiles++;
 			}
 			if(!strcasecmp(filename,"exec.img") || !strcasecmp(filename,"execD.img")) {
@@ -347,6 +384,7 @@ int parse_gcm(file_handle *file, file_handle *file2, ExecutableFile *filesToPatc
 				filesToPatch[numFiles].size = size;
 				filesToPatch[numFiles].type = PATCH_EXEC;
 				memcpy(&filesToPatch[numFiles].name,&filename[0],64); 
+				print_gecko("Found file to patch %s\n", filesToPatch[numFiles].name);
 				numFiles++;
 			}
 			if(endsWith(filename,".tgc")) {
@@ -367,6 +405,7 @@ int parse_gcm(file_handle *file, file_handle *file2, ExecutableFile *filesToPatc
 	filesToPatch[numFiles].size = 0x2440;
 	filesToPatch[numFiles].type = PATCH_OTHER;
 	sprintf(filesToPatch[numFiles].name, "boot.bin");
+	print_gecko("Found file to patch %s\n", filesToPatch[numFiles].name);
 	numFiles++;
 	return numFiles;
 }
@@ -412,6 +451,7 @@ int parse_tgc(file_handle *file, ExecutableFile *filesToPatch, u32 tgc_base, cha
 		filesToPatch[numFiles].size = sizeof(ApploaderHeader) + ((apploaderHeader.size + 31) & ~31) + ((apploaderHeader.rebootSize + 31) & ~31);
 		filesToPatch[numFiles].type = PATCH_APPLOADER;
 		sprintf(filesToPatch[numFiles].name, "%s/%s", tgcname, "apploader.img");
+		print_gecko("Found file to patch %s\n", filesToPatch[numFiles].name);
 		numFiles++;
 	}
 	
@@ -425,6 +465,7 @@ int parse_tgc(file_handle *file, ExecutableFile *filesToPatch, u32 tgc_base, cha
 	filesToPatch[numFiles].tgcFileStartArea = tgcHeader.userStart;
 	filesToPatch[numFiles].tgcFakeOffset = tgcHeader.gcmUserStart;
 	sprintf(filesToPatch[numFiles].name, "%s/%s", tgcname, "default.dol");
+	print_gecko("Found file to patch %s\n", filesToPatch[numFiles].name);
 	numFiles++;
 
 	// Alloc and read FST
@@ -463,6 +504,7 @@ int parse_tgc(file_handle *file, ExecutableFile *filesToPatch, u32 tgc_base, cha
 				filesToPatch[numFiles].tgcFileStartArea = tgcHeader.userStart;
 				filesToPatch[numFiles].tgcFakeOffset = tgcHeader.gcmUserStart;
 				memcpy(&filesToPatch[numFiles].name,&filename[0],64); 
+				print_gecko("Found file to patch %s\n", filesToPatch[numFiles].name);
 				numFiles++;
 			}
 			if(endsWith(filename,".elf")) {
@@ -479,6 +521,7 @@ int parse_tgc(file_handle *file, ExecutableFile *filesToPatch, u32 tgc_base, cha
 				filesToPatch[numFiles].tgcFileStartArea = tgcHeader.userStart;
 				filesToPatch[numFiles].tgcFakeOffset = tgcHeader.gcmUserStart;
 				memcpy(&filesToPatch[numFiles].name,&filename[0],64); 
+				print_gecko("Found file to patch %s\n", filesToPatch[numFiles].name);
 				numFiles++;
 			}
 			if(!strcasecmp(filename,"appl2.img") || !strcasecmp(filename,"appl2D.img")) {
@@ -487,6 +530,7 @@ int parse_tgc(file_handle *file, ExecutableFile *filesToPatch, u32 tgc_base, cha
 				filesToPatch[numFiles].size = size;
 				filesToPatch[numFiles].type = PATCH_APPLOADER;
 				memcpy(&filesToPatch[numFiles].name,&filename[0],64); 
+				print_gecko("Found file to patch %s\n", filesToPatch[numFiles].name);
 				numFiles++;
 			}
 			if(!strcasecmp(filename,"exec.img") || !strcasecmp(filename,"execD.img")) {
@@ -495,6 +539,7 @@ int parse_tgc(file_handle *file, ExecutableFile *filesToPatch, u32 tgc_base, cha
 				filesToPatch[numFiles].size = size;
 				filesToPatch[numFiles].type = PATCH_EXEC;
 				memcpy(&filesToPatch[numFiles].name,&filename[0],64); 
+				print_gecko("Found file to patch %s\n", filesToPatch[numFiles].name);
 				numFiles++;
 			}
 		} 

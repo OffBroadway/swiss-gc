@@ -34,6 +34,9 @@ const char* getDeviceInfoString(u32 location) {
 			strcpy(topStr, device->hwName);
 		}
 	}
+	else if(device == &__device_flippydrive) {
+		sprintf(topStr, "%s (%s)", device->hwName, "hello");
+	}
 	else if(device == &__device_wkf) {
 		sprintf(topStr, "%s (%s)", device->hwName, wkfGetSerial());
 	}

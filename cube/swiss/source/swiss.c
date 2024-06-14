@@ -2535,7 +2535,7 @@ void select_device(int type)
 	}
 
 	int curDevice = 0;
-	int inAdvanced = 0, showAllDevices = 0;
+	int inAdvanced = 0, showAllDevices = 1;
 	int direction = 0;
 
 	while((allDevices[curDevice] != devices[DEVICE_PREV])) {

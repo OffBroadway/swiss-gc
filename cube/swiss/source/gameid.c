@@ -51,18 +51,18 @@ static sys_resetinfo resetinfo = {
 	{NULL, NULL}, onreset, 0
 };
 
-__attribute((constructor))
-static void gameID_init(void)
-{
-	s32 chan = SI_CHAN0;
+// __attribute((constructor))
+// static void gameID_init(void)
+// {
+// 	s32 chan = SI_CHAN0;
 
-	while (chan < SI_MAX_CHAN)
-		if (SI_Transfer(chan, &command, sizeof(command), NULL, 0, callback, 0))
-			chan++;
-	while (SI_Busy());
+// 	while (chan < SI_MAX_CHAN)
+// 		if (SI_Transfer(chan, &command, sizeof(command), NULL, 0, callback, 0))
+// 			chan++;
+// 	while (SI_Busy());
 
-	SYS_RegisterResetFunc(&resetinfo);
-}
+// 	SYS_RegisterResetFunc(&resetinfo);
+// }
 
 __attribute((destructor))
 static void gameID_deinit(void)
