@@ -49,10 +49,10 @@ static uint32_t close_fd(uint32_t fd)
 	return lastStatus.result;
 }
 
-s32 deviceHandler_FlippyDrive_readDir(file_handle* ffile, file_handle** dir, u32 type) {
+s32 deviceHandler_FlippyDrive_readDir(file_handle* file, file_handle** dir, u32 type) {
 
 	//Open directory
-	int err = dvd_custom_open(getDevicePath(ffile->name), FILE_ENTRY_TYPE_DIR, IPC_FILE_FLAG_NONE);
+	int err = dvd_custom_open(getDevicePath(file->name), FILE_ENTRY_TYPE_DIR, IPC_FILE_FLAG_NONE);
 	if(err)
 	{
 		print_gecko("DI error during open dir\n");
@@ -63,7 +63,7 @@ s32 deviceHandler_FlippyDrive_readDir(file_handle* ffile, file_handle** dir, u32
 	err = dvd_custom_status(&lastStatus);
 	if(lastStatus.result != 0 || err)
 	{
-		print_gecko("Unable to open dir %s, returned %d\n", getDevicePath(ffile->name), lastStatus.result);
+		print_gecko("Unable to open dir %s, returned %d\n", getDevicePath(file->name), lastStatus.result);
 		return -1;
 	}
 
@@ -80,7 +80,7 @@ s32 deviceHandler_FlippyDrive_readDir(file_handle* ffile, file_handle** dir, u32
 	}
 
 	//Setup parent dir
-	concat_path((*dir)[0].name, ffile->name, "..");
+	concat_path((*dir)[0].name, file->name, "..");
 	(*dir)[0].fileAttrib = IS_SPECIAL;
 
 	int idx = 1;
@@ -112,7 +112,7 @@ s32 deviceHandler_FlippyDrive_readDir(file_handle* ffile, file_handle** dir, u32
 			memset(&(*dir)[entry_table_size / 2], 0, sizeof(file_handle) * (entry_table_size/2));
 		}
 
-		if (concat_path((*dir)[idx].name, ffile->name, curEntry.name) < PATHNAME_MAX)
+		if (concat_path((*dir)[idx].name, file->name, curEntry.name) < PATHNAME_MAX)
 		{
 			(*dir)[idx].size = curEntry.size;
 			
@@ -139,6 +139,26 @@ s32 deviceHandler_FlippyDrive_readDir(file_handle* ffile, file_handle** dir, u32
 	return idx;
 }
 
+s32 deviceHandler_FlippyDrive_makeDir(file_handle *file)
+{
+	int err = dvd_custom_mkdir(getDevicePath(file->name));
+	if(err)
+	{
+		print_gecko("DI error during open dir\n");
+		return -1;
+	}
+
+	GCN_ALIGNED(file_status_t) lastStatus;
+	err = dvd_custom_status(&lastStatus);
+	if (lastStatus.result != 0 || err)
+	{
+		print_gecko("Unable to makedir %s, returned %d\n", getDevicePath(file->name), lastStatus.result);
+		return -1;
+	}
+
+	return 0;
+}
+
 s64 deviceHandler_FlippyDrive_seekFile(file_handle* file, s64 where, u32 type) {
 	print_gecko("CALL deviceHandler_FlippyDrive_seekFile(%s, %x)\n", file->name, where);
 	if(type == DEVICE_HANDLER_SEEK_SET) file->offset = where;
@@ -152,11 +172,16 @@ s32 deviceHandler_FlippyDrive_readFile(file_handle* file, void* buffer, u32 leng
 	print_gecko("CALL deviceHandler_FlippyDrive_readFile(%s, %p, %x)\n", filename, buffer, length);
 
 	// open the file
-	dvd_custom_open(filename, FILE_ENTRY_TYPE_FILE, IPC_FILE_FLAG_DISABLECACHE | IPC_FILE_FLAG_DISABLEFASTSEEK | IPC_FILE_FLAG_DISABLESPEEDEMU);
+	int err = dvd_custom_open(filename, FILE_ENTRY_TYPE_FILE, IPC_FILE_FLAG_DISABLECACHE | IPC_FILE_FLAG_DISABLEFASTSEEK | IPC_FILE_FLAG_DISABLESPEEDEMU);
+	if (err)
+	{
+		print_gecko("DI error during open dir\n");
+		return -1;
+	}
 
 	GCN_ALIGNED(file_status_t) status;
-	int err = dvd_custom_status(&status);
-	if (status.result != 0) {
+	err = dvd_custom_status(&status);
+	if (err || status.result != 0) {
 		print_gecko("Failed to open file %s\n", filename);
 		return -1;
 	}
@@ -279,6 +304,7 @@ DEVICEHANDLER_INTERFACE __device_flippydrive = {
 	.info = deviceHandler_FlippyDrive_info,
 	.init = deviceHandler_FlippyDrive_init,
 	.readDir = deviceHandler_FlippyDrive_readDir,
+	.makeDir = deviceHandler_FlippyDrive_makeDir,
 	.seekFile = deviceHandler_FlippyDrive_seekFile,
 	.readFile = deviceHandler_FlippyDrive_readFile,
 	.writeFile = deviceHandler_FlippyDrive_writeFile,
@@ -290,23 +316,3 @@ DEVICEHANDLER_INTERFACE __device_flippydrive = {
 	.emulated = deviceHandler_FlippyDrive_emulated,
 	.status = deviceHandler_FlippyDrive_status,
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

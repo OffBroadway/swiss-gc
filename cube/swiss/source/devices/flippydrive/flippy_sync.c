@@ -335,6 +335,35 @@ int dvd_custom_unlink(char *path) {
     return 0;
 }
 
+int dvd_custom_mkdir(char *path) {
+    GCN_ALIGNED(file_entry_t) entry;
+
+    strncpy(entry.name, path, 256);
+    entry.name[255] = 0;
+
+    DCFlushRange(&entry, sizeof(file_entry_t));
+
+	_di_regs[DI_SR] = (DI_SR_BRKINTMASK | DI_SR_TCINTMASK | DI_SR_DEINT | DI_SR_DEINTMASK);
+	_di_regs[DI_CVR] = 0; // clear cover int
+
+    _di_regs[DI_CMDBUF0] = DVD_FLIPPY_FILEAPI_BASE | IPC_FILE_MKDIR;
+    _di_regs[DI_CMDBUF1] = 0;
+	_di_regs[DI_CMDBUF2] = 0; //TODO this was sizeof(file_entry_t) before for no particular reason
+
+    _di_regs[DI_MAR] = (u32)&entry & 0x1FFFFFFF;
+    _di_regs[DI_LENGTH] = sizeof(file_entry_t);
+    _di_regs[DI_CR] = (DI_CR_RW | DI_CR_DMA | DI_CR_TSTART); // start transfer
+
+    while (_di_regs[DI_CR] & DI_CR_TSTART)
+        ; // transfer complete register
+
+    // check if ERR was asserted
+	if (_di_regs[DI_SR] & DI_SR_DEINT) {
+        return 1;
+    }
+	return 0;
+}
+
 int dvd_custom_unlink_flash(char *path) {
     GCN_ALIGNED(file_entry_t) entry;
 
