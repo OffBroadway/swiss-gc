@@ -52,7 +52,7 @@ static uint32_t close_fd(uint32_t fd)
 s32 deviceHandler_FlippyDrive_readDir(file_handle* ffile, file_handle** dir, u32 type) {
 
 	//Open directory
-	int err = dvd_custom_open(ffile->name, FILE_ENTRY_TYPE_DIR, IPC_FILE_FLAG_NONE);
+	int err = dvd_custom_open(getDevicePath(ffile->name), FILE_ENTRY_TYPE_DIR, IPC_FILE_FLAG_NONE);
 	if(err)
 	{
 		print_gecko("DI error during open dir\n");
@@ -60,10 +60,10 @@ s32 deviceHandler_FlippyDrive_readDir(file_handle* ffile, file_handle** dir, u32
 	}
 
 	GCN_ALIGNED(file_status_t) lastStatus;
-	dvd_custom_status(&lastStatus);
-	if(lastStatus.result != 0)
+	err = dvd_custom_status(&lastStatus);
+	if(lastStatus.result != 0 || err)
 	{
-		print_gecko("Unable to open dir %s, returned %d\n", ffile->name, lastStatus.result);
+		print_gecko("Unable to open dir %s, returned %d\n", getDevicePath(ffile->name), lastStatus.result);
 		return -1;
 	}
 
@@ -75,6 +75,7 @@ s32 deviceHandler_FlippyDrive_readDir(file_handle* ffile, file_handle** dir, u32
 	if(!dir)
 	{
 		print_gecko("Unable to alloc dir array\n");
+		close_fd(dir_fd);
 		return -1;
 	}
 
@@ -103,6 +104,7 @@ s32 deviceHandler_FlippyDrive_readDir(file_handle* ffile, file_handle** dir, u32
 			if (!dir)
 			{
 				print_gecko("Unable to alloc dir array\n");
+				close_fd(dir_fd);
 				return -1;
 			}
 
@@ -146,19 +148,20 @@ s64 deviceHandler_FlippyDrive_seekFile(file_handle* file, s64 where, u32 type) {
 }
 
 s32 deviceHandler_FlippyDrive_readFile(file_handle* file, void* buffer, u32 length) {
-	char *filename = getRelativeName(file->name);
+	char *filename = getDevicePath(file->name);
 	print_gecko("CALL deviceHandler_FlippyDrive_readFile(%s, %p, %x)\n", filename, buffer, length);
 
 	// open the file
 	dvd_custom_open(filename, FILE_ENTRY_TYPE_FILE, IPC_FILE_FLAG_DISABLECACHE | IPC_FILE_FLAG_DISABLEFASTSEEK | IPC_FILE_FLAG_DISABLESPEEDEMU);
 
-	file_status_t *status = dvd_custom_status();
-	if (status->result != 0) {
+	GCN_ALIGNED(file_status_t) status;
+	int err = dvd_custom_status(&status);
+	if (status.result != 0) {
 		print_gecko("Failed to open file %s\n", filename);
 		return -1;
 	}
 
-	file->size = __builtin_bswap64(*(u64*)(&status->fsize));
+	file->size = __builtin_bswap64(*(u64*)(&status.fsize));
 
 	// // reads will be done in 4k chunks and copied to the buffer
 	// static GCN_ALIGNED(u8) read_buffer[0x1000];
@@ -169,10 +172,10 @@ s32 deviceHandler_FlippyDrive_readFile(file_handle* file, void* buffer, u32 leng
 	// }
 
 	// read the file
-	dvd_read_data(buffer, length, file->offset, status->fd);
+	dvd_read_data(buffer, length, file->offset, status.fd);
 
 	// close the file
-	dvd_custom_close(status->fd);
+	dvd_custom_close(status.fd);
 
 	// TODO: check if this is err
 	s32 bytes_read = length;
@@ -181,7 +184,7 @@ s32 deviceHandler_FlippyDrive_readFile(file_handle* file, void* buffer, u32 leng
 }
 
 s32 deviceHandler_FlippyDrive_writeFile(file_handle* file, const void* buffer, u32 length) {
-	char *filename = getRelativeName(file->name);
+	char *filename = getDevicePath(file->name);
 	print_gecko("CALL deviceHandler_FlippyDrive_writeFile(%s, %p, %x)\n", filename, buffer, length);
 
 	// char *a = getDevicePath(file->name);
@@ -190,25 +193,26 @@ s32 deviceHandler_FlippyDrive_writeFile(file_handle* file, const void* buffer, u
 	// open the file
 	dvd_custom_open(filename, FILE_ENTRY_TYPE_FILE, IPC_FILE_FLAG_WRITE | IPC_FILE_FLAG_DISABLECACHE | IPC_FILE_FLAG_DISABLEFASTSEEK | IPC_FILE_FLAG_DISABLESPEEDEMU);
 
-	file_status_t *status = dvd_custom_status();
-	if (status->result != 0) {
+	GCN_ALIGNED(file_status_t) status;
+	int err = dvd_custom_status(&status);
+	if (err || status.result != 0) {
 		print_gecko("Failed to open file %s\n", filename);
 		return -1;
 	}
 
-	file->size = __builtin_bswap64(*(u64*)(&status->fsize));
+	file->size = __builtin_bswap64(*(u64*)(&status.fsize));
 
 	// write the file in 16k chunks
 	for (u32 i = 0; i < length; i += 0x3fe0) {
 		print_gecko("Writing %x bytes to file %s\n", (length - i) > 0x3fe0 ? 0x3fe0 : (length - i), filename);
-		if (dvd_custom_write((char*)buffer, file->offset + i, (length - i) > 0x3fe0 ? 0x3fe0 : (length - i), status->fd) != 0) {
+		if (dvd_custom_write((char*)buffer, file->offset + i, (length - i) > 0x3fe0 ? 0x3fe0 : (length - i), status.fd) != 0) {
 			print_gecko("Failed to write to file %s\n", filename);
 			return -1;
 		}
 	}
 
 	// close the file
-	dvd_custom_close(status->fd);
+	dvd_custom_close(status.fd);
 	print_gecko("Write done\n");
 
 	file->offset += length;

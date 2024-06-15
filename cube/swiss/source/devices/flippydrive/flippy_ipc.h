@@ -88,6 +88,8 @@ typedef struct {
     uint8_t pad[10];
 } file_entry_t;
 
+ASSERT_SIZE_MULTIPLE_OF_32(file_entry_t);
+
 typedef struct {
     uint32_t magic;
     uint8_t ipc_command_type;
