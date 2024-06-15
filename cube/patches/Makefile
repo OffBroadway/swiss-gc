@@ -671,3 +671,25 @@ gcloader-v2.eth.bin:
 	@$(OBJCOPY) -O binary --set-section-flags .bss.*=alloc,load,contents gcloader-v2.eth.elf gcloader-v2.eth.bin
 	@$(BIN2S) -H $(DEST)/gcloader_v2_eth_bin.h gcloader-v2.eth.bin > $(DEST)/gcloader-v2.eth.bin.s
 	@rm -f *.bin *.elf *.o
+
+flippydrive.bin:
+	@echo Building FlippyDrive Patch ...
+	@$(CC) -Os $(OPTS) -c base/base.S
+	@$(CC) -Os $(OPTS) -c base/emulator.c -DASYNC_READ -DGCODE
+	@$(CC) -Os $(OPTS) -c base/emulator_dvd.c -DREAD_SPEED_TIER=1
+	@$(CC) -Os $(OPTS) -c base/DVDMath.c
+	@$(CC) -Os $(OPTS) -c base/frag.c -DDEVICE_PATCHES=1
+	@$(CC) -Os $(OPTS) -c base/interrupt.c -DIRQ_MASK=0b00000000000000000000010000000000
+	@$(CC) -Os $(OPTS) -c base/ipl.c
+	@$(CC) -Os $(OPTS) -c flippydrive/flippydrive.c -DDVD_MATH
+	@$(CC) -Os $(OPTS) -c usbgecko/uart.c
+	@$(CC) -Os $(OPTS) -c base/dolphin/os.c
+	@$(CC) -Os $(OPTS) -c base/memcpy.S
+	@$(CC) -Os $(OPTS) -c base/floor.S
+	@$(CC) -Os $(OPTS) -c base/sqrt.S
+	@$(CC) -Os $(OPTS) -o flippydrive.elf -T base/base.ld -T base/common.ld -T base/dolphin/os.ld base.o emulator.o emulator_dvd.o DVDMath.o frag.o interrupt.o ipl.o flippydrive.o uart.o os.o memcpy.o floor.o sqrt.o
+	@mkdir -p $(DISASM)
+	@$(OBJDUMP) -D flippydrive.elf > $(DISASM)/flippydrive.txt
+	@$(OBJCOPY) -O binary --set-section-flags .bss.*=alloc,load,contents flippydrive.elf flippydrive.bin
+	@$(BIN2S) -H $(DEST)/gcloader_v2_bin.h flippydrive.bin > $(DEST)/flippydrive.bin.s
+	@rm -f *.bin *.elf *.o
