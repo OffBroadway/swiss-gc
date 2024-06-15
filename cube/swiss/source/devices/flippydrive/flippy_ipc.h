@@ -2,7 +2,21 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define FLIPPY_IPC_MAJORVER = 1;
+#define FLIPPY_IPC_MINORVER = 2;
+
 #define GCN_ALIGNED(type) type __attribute__((aligned(32)))
+
+// Check if static_assert is supported
+#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
+    #include <assert.h>
+    // C11 or later: use static_assert
+    #define ASSERT_SIZE_MULTIPLE_OF_32(T) static_assert(sizeof(T) % 32 == 0, "Size of " #T " is not a multiple of 32.")
+#else
+    // Pre-C11: define a fallback mechanism
+    #define ASSERT_SIZE_MULTIPLE_OF_32(T) 
+#endif
+
 
 //MUST be a multiple of 32 for DMA reasons in the cube
 #define MAX_FILE_NAME 256
@@ -19,7 +33,8 @@
 #define IPC_FILE_STAT_RESPONSE_LEN      static_assert(0, "STAT format not yet defined");
 #define IPC_FILE_SEEK_RESPONSE_LEN      0
 #define IPC_FILE_UNLINK_RESPONSE_LEN    0
-#define IPC_FILE_READDIR_RESPONSE_LEN   sizeof(file_entry_t)
+#define IPC_FILE_MKDIR_RESPONSE_LEN     0
+#define IPC_FILE_READDIR_RESPONSE_LEN sizeof(file_entry_t)
 
 #define IPC_WRITE_PAYLOAD_MAX_LEN       FD_IPC_MAXRESP-32
 
@@ -29,6 +44,7 @@ typedef enum {
     IPC_READ_STATUS        = 0x00,
     IPC_SET_DEFAULT_FD     = 0x01, //Purely 2040
 
+    IPC_FILE_MKDIR         = 0x07,
     IPC_FILE_READ          = 0x08,
     IPC_FILE_WRITE         = 0x09,
     IPC_FILE_OPEN          = 0x0A,
@@ -80,7 +96,7 @@ typedef struct {
     uint8_t subcmd;
     union
     {
-        uint8_t shortpayload[8];
+        uint8_t shortpayload[24];
         __attribute__((packed)) struct
         {
             uint32_t offset;
@@ -89,17 +105,22 @@ typedef struct {
     };
 } ipc_req_header_t;
 
+ASSERT_SIZE_MULTIPLE_OF_32(ipc_req_header_t);
+
 typedef struct {
     ipc_req_header_t hdr;
     file_entry_t file;
 } ipc_req_open_t;
 
+ASSERT_SIZE_MULTIPLE_OF_32(ipc_req_open_t);
+
 typedef struct {
     //Setup alignment such that the payload is 32-byte aligned for the GCN's DMA
     ipc_req_header_t hdr;
-    uint8_t pad[16];
     uint8_t payload[IPC_WRITE_PAYLOAD_MAX_LEN];
 } ipc_req_write_t;
+
+ASSERT_SIZE_MULTIPLE_OF_32(ipc_req_write_t);
 
 typedef struct
 {
@@ -107,28 +128,39 @@ typedef struct
     file_entry_t file;
 } ipc_req_unlink_t;
 
+ASSERT_SIZE_MULTIPLE_OF_32(ipc_req_unlink_t);
+
+typedef struct
+{
+    ipc_req_header_t hdr;
+    file_entry_t file;
+} ipc_req_mkdir_t;
+
+ASSERT_SIZE_MULTIPLE_OF_32(ipc_req_mkdir_t);
+
 enum file_entry_type_enum {
     FILE_ENTRY_TYPE_FILE = 0,
     FILE_ENTRY_TYPE_DIR = 1,
 
+    FILE_ENTRY_TYPE_BAD = 0xFF,
     FILE_ENTRY_TYPE_MAX = 0xFF
 };
 
 #pragma pack(pop)
 
 static const size_t ipc_payloadlen[IPC_CMD_MAX] = {
-    0, 0, 0, 0, 0, 0, 0, 0, //CMD 0-7
-    0, //FILE_READ
-    0, //FILE_WRITE
-    sizeof(file_entry_t), //FILE_OPEN
-    0, //FILE_CLOSE
-    0, //FILE_STAT
-    0, //FILE_SEEK
-    sizeof(file_entry_t), //FILE_UNLINK
-    0, //READDIR
+    0, 0, 0, 0, 0, 0, 0,  // CMD 0-7
+    sizeof(file_entry_t), // FILE_MKDIR
+    0,                    // FILE_READ
+    0,                    // FILE_WRITE
+    sizeof(file_entry_t), // FILE_OPEN
+    0,                    // FILE_CLOSE
+    0,                    // FILE_STAT
+    0,                    // FILE_SEEK
+    sizeof(file_entry_t), // FILE_UNLINK
+    0,                    // READDIR
 
-    IPC_RESERVED0_SIZE, //RESERVED0
-    0, //FILE_OPEN_FLASH is purely internal to RP2040 and has no meaning over IPC
-    0, //FILE_UNLINK_FLASH is purely internal
+    IPC_RESERVED0_SIZE, // RESERVED0
+    0,                  // FILE_OPEN_FLASH is purely internal to RP2040 and has no meaning over IPC
+    0,                  // FILE_UNLINK_FLASH is purely internal
 };
-

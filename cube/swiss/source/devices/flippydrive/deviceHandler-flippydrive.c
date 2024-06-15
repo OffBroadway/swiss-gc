@@ -35,37 +35,106 @@ file_handle initial_FlippyDrive =
 
 device_info* deviceHandler_FlippyDrive_info(file_handle* file) { return NULL; }
 
-s32 deviceHandler_FlippyDrive_readDir(file_handle* ffile, file_handle** dir, u32 type) {
-	// before?
+static uint32_t close_fd(uint32_t fd)
+{
+	dvd_custom_close(fd);
 
-	// Set everything up to read
-	int num_entries = 1, i = 1;
-	*dir = calloc(num_entries, sizeof(file_handle));
+	GCN_ALIGNED(file_status_t) lastStatus;
+	dvd_custom_status(&lastStatus);
+	if (lastStatus.result != 0)
+	{
+		print_gecko("Unable to close fd %d, returned %d\n", fd, lastStatus.result);
+	}
+
+	return lastStatus.result;
+}
+
+s32 deviceHandler_FlippyDrive_readDir(file_handle* ffile, file_handle** dir, u32 type) {
+
+	//Open directory
+	int err = dvd_custom_open(ffile->name, FILE_ENTRY_TYPE_DIR, IPC_FILE_FLAG_NONE);
+	if(err)
+	{
+		print_gecko("DI error during open dir\n");
+		return -1;
+	}
+
+	GCN_ALIGNED(file_status_t) lastStatus;
+	dvd_custom_status(&lastStatus);
+	if(lastStatus.result != 0)
+	{
+		print_gecko("Unable to open dir %s, returned %d\n", ffile->name, lastStatus.result);
+		return -1;
+	}
+
+	uint_fast8_t dir_fd = lastStatus.fd;
+
+	//Allocate structures for reading
+	size_t entry_table_size = 1;
+	*dir = calloc(entry_table_size, sizeof(file_handle));
+	if(!dir)
+	{
+		print_gecko("Unable to alloc dir array\n");
+		return -1;
+	}
+
+	//Setup parent dir
 	concat_path((*dir)[0].name, ffile->name, "..");
 	(*dir)[0].fileAttrib = IS_SPECIAL;
 
-	for (int j = 0; j < 1; j++) {
-		// Make sure we have room for this one
-		if(i == num_entries){
-			++num_entries;
-			*dir = reallocarray(*dir, num_entries, sizeof(file_handle));
+	int idx = 1;
+	GCN_ALIGNED(file_entry_t) curEntry;
+	while(idx < 4096) //Limit to a sane number of entries to avoid memory exhaustion
+	{
+		err = dvd_custom_readdir(&curEntry, dir_fd);
+		if(err || curEntry.last_status)
+		{
+			print_gecko("error during readdir\n");
+			close_fd(dir_fd);
+			return idx;
 		}
-		memset(&(*dir)[i], 0, sizeof(file_handle));
 
-		char* name = (j == 0) ? "XD.iso" : "mkdd.iso";
+		if(curEntry.name[0] == '\0') break; //End of entries
 
-		if(concat_path((*dir)[i].name, ffile->name, name) < PATHNAME_MAX) {
-			(*dir)[i].size       = 0x57058000;
-			(*dir)[i].fileAttrib = IS_FILE; // IS_DIR
-			++i;
-		} else {
+		if(entry_table_size == idx) //Out of table entries
+		{
+			entry_table_size *= 2; //Double size of table to avoid pathological n^2 reallocation
+			*dir = reallocarray(*dir, entry_table_size, sizeof(file_handle));
+			if (!dir)
+			{
+				print_gecko("Unable to alloc dir array\n");
+				return -1;
+			}
+
+			//Clear the new memory
+			memset(&(*dir)[entry_table_size / 2], 0, sizeof(file_handle) * (entry_table_size/2));
+		}
+
+		if (concat_path((*dir)[idx].name, ffile->name, curEntry.name) < PATHNAME_MAX)
+		{
+			(*dir)[idx].size = curEntry.size;
+			
+			switch(curEntry.type)
+			{
+				case FILE_ENTRY_TYPE_FILE: (*dir)[idx].fileAttrib = IS_FILE; break;
+				case FILE_ENTRY_TYPE_DIR: (*dir)[idx].fileAttrib = IS_DIR; break;
+				default: (*dir)[idx].fileAttrib = IS_SPECIAL;
+			}
+
+			idx++;
+		}
+		else
+		{
 			print_gecko("Failed to concat path\n");
 		}
 	}
 
-	print_gecko("Read %i entries\n", i);
+	print_gecko("Read %i entries\n", idx);
 
-	return i;
+	//Close directory (best effort)
+	close_fd(dir_fd);
+
+	return idx;
 }
 
 s64 deviceHandler_FlippyDrive_seekFile(file_handle* file, s64 where, u32 type) {
