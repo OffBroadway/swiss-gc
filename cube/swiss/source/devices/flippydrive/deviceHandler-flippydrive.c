@@ -234,6 +234,12 @@ s32 deviceHandler_FlippyDrive_writeFile(file_handle* file, const void* buffer, u
 			print_gecko("Failed to write to file %s\n", filename);
 			return -1;
 		}
+		err = dvd_custom_status(&status);
+		if (err || status.result != 0)
+		{
+			print_gecko("Failed to write to file %s\n", filename);
+			return -1;
+		}
 	}
 
 	// close the file
