@@ -178,6 +178,8 @@ void dvd_set_default_fd(uint32_t fd) {
 }
 
 int dvd_custom_write(char *buf, uint32_t offset, uint32_t length, uint32_t fd) {
+    DCFlushRange(buf, length);
+
     _di_regs[DI_SR] = (DI_SR_BRKINTMASK | DI_SR_TCINTMASK | DI_SR_DEINT | DI_SR_DEINTMASK);
     _di_regs[DI_CVR] = 0; // clear cover int
 
@@ -186,7 +188,7 @@ int dvd_custom_write(char *buf, uint32_t offset, uint32_t length, uint32_t fd) {
     _di_regs[DI_CMDBUF2] = length;
 
     _di_regs[DI_MAR] = (u32)buf & 0x1FFFFFFF;
-    _di_regs[DI_LENGTH] = (length + 31) & ~31;
+    _di_regs[DI_LENGTH] = (length + 31) & 0xFFFFFFE0;
     _di_regs[DI_CR] = (DI_CR_RW | DI_CR_DMA | DI_CR_TSTART);
     while (_di_regs[DI_CR] & DI_CR_TSTART) {
         if (ticks_to_millisecs(gettime()) % 1000 == 0) {
@@ -231,15 +233,15 @@ int dvd_read(void* dst, unsigned int len, uint64_t offset, unsigned int fd) {
     return 0;
 }
 
-#define BLOCK_SIZE (16 * 1024)
-static GCN_ALIGNED(u8) aligned_buffer[BLOCK_SIZE];
 int dvd_read_data(void* dst, unsigned int len, uint64_t offset, unsigned int fd) {
     uint64_t current_offset = offset;
     unsigned int total_read = 0;
     unsigned int remaining = len;
 
+    GCN_ALIGNED(u8) aligned_buffer[FD_IPC_MAXRESP];
+
     while (remaining > 0) {
-        unsigned int to_read = remaining > BLOCK_SIZE ? BLOCK_SIZE : remaining;
+        unsigned int to_read = remaining > FD_IPC_MAXRESP ? FD_IPC_MAXRESP : remaining;
         int result = dvd_read(aligned_buffer, to_read, current_offset, fd);
         if (result != 0) {
             print_gecko("dvd_read_data failed: %d\n", result);
