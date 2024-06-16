@@ -150,7 +150,7 @@ s32 deviceHandler_FlippyDrive_makeDir(file_handle *file)
 
 	GCN_ALIGNED(file_status_t) lastStatus;
 	err = dvd_custom_status(&lastStatus);
-	if (lastStatus.result != 0 || err)
+	if (lastStatus.result != 0 && lastStatus.result != FR_EXIST || err)
 	{
 		print_gecko("Unable to makedir %s, returned %d\n", getDevicePath(file->name), lastStatus.result);
 		return -1;
@@ -230,7 +230,12 @@ s32 deviceHandler_FlippyDrive_writeFile(file_handle* file, const void* buffer, u
 	// write the file in 16k chunks
 	for (u32 i = 0; i < length; i += 0x3fe0) {
 		print_gecko("Writing %x bytes to file %s\n", (length - i) > 0x3fe0 ? 0x3fe0 : (length - i), filename);
-		if (dvd_custom_write((char*)buffer, file->offset + i, (length - i) > 0x3fe0 ? 0x3fe0 : (length - i), status.fd) != 0) {
+
+		GCN_ALIGNED(u8) aligned_buffer[FD_IPC_MAXRESP];
+		size_t xfer_len = (length - i) > 0x3fe0 ? 0x3fe0 : (length - i);
+		memcpy(aligned_buffer, buffer+i, xfer_len);
+
+		if (dvd_custom_write((char*)aligned_buffer, file->offset + i, xfer_len, status.fd) != 0) {
 			print_gecko("Failed to write to file %s\n", filename);
 			return -1;
 		}
