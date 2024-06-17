@@ -26,6 +26,7 @@
 #pragma pack(push,1)
 
 #define IPC_READ_STATUS_RESPONSE_LEN    sizeof(file_status_t)
+#define IPC_FS_INFO_RESPONSE_LEN        sizeof(fs_info_t)
 #define IPC_FILE_READ_RESPONSE_LEN      read_len
 #define IPC_FILE_WRITE_RESPONSE_LEN     0
 #define IPC_FILE_OPEN_RESPONSE_LEN      0
@@ -44,6 +45,7 @@ typedef enum {
     IPC_READ_STATUS        = 0x00,
     IPC_SET_DEFAULT_FD     = 0x01, //Purely 2040
 
+    IPC_FS_INFO            = 0x06,
     IPC_FILE_MKDIR         = 0x07,
     IPC_FILE_READ          = 0x08,
     IPC_FILE_WRITE         = 0x09,
@@ -69,6 +71,18 @@ typedef struct
     uint8_t fd; //Valid after open
     uint8_t pad[19];
 } file_status_t;
+
+ASSERT_SIZE_MULTIPLE_OF_32(file_status_t);
+
+typedef struct
+{
+    uint32_t result;
+    uint64_t free;
+    uint64_t total;
+    uint8_t pad[12];
+} fs_info_t;
+
+ASSERT_SIZE_MULTIPLE_OF_32(fs_info_t);
 
 enum {
     IPC_FILE_FLAG_NONE            = 0x00,
@@ -151,7 +165,8 @@ enum file_entry_type_enum {
 #pragma pack(pop)
 
 static const size_t ipc_payloadlen[IPC_CMD_MAX] = {
-    0, 0, 0, 0, 0, 0, 0,  // CMD 0-7
+    0, 0, 0, 0, 0, 0,
+    sizeof(fs_info_t),  // CMD 0-5
     sizeof(file_entry_t), // FILE_MKDIR
     0,                    // FILE_READ
     0,                    // FILE_WRITE

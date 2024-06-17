@@ -33,7 +33,29 @@ file_handle initial_FlippyDrive =
 	  0
 	};
 
-device_info* deviceHandler_FlippyDrive_info(file_handle* file) { return NULL; }
+static device_info last_fat_info;
+device_info* deviceHandler_FlippyDrive_info(file_handle* file) {
+	GCN_ALIGNED(fs_info_t) fsInfo;
+
+	int err = dvd_custom_fs_info(&fsInfo);
+	if (err)
+	{
+		print_gecko("DI error during fs info\n");
+		return NULL;
+	}
+
+	if(fsInfo.result != 0)
+	{
+		print_gecko("Unable to determine size\n");
+		return NULL;
+	}
+	
+	last_fat_info.freeSpace = __builtin_bswap64(*(u64 *)(&fsInfo.free));
+	last_fat_info.totalSpace = __builtin_bswap64(*(u64 *)(&fsInfo.total));
+	last_fat_info.metric = true;
+
+	return &last_fat_info;
+}
 
 static uint32_t close_fd(uint32_t fd)
 {
@@ -150,7 +172,7 @@ s32 deviceHandler_FlippyDrive_makeDir(file_handle *file)
 
 	GCN_ALIGNED(file_status_t) lastStatus;
 	err = dvd_custom_status(&lastStatus);
-	if (lastStatus.result != 0 && lastStatus.result != FR_EXIST || err)
+	if ((lastStatus.result != 0 && lastStatus.result != FR_EXIST) || err)
 	{
 		print_gecko("Unable to makedir %s, returned %d\n", getDevicePath(file->name), lastStatus.result);
 		return -1;

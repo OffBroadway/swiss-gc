@@ -47,6 +47,7 @@ void dvd_set_default_fd(uint32_t fd);
 int dvd_custom_write(char *buf, uint32_t offset, uint32_t length, uint32_t fd);
 int dvd_read(void *dst, unsigned int len, uint64_t offset, uint32_t fd);
 int dvd_custom_status(file_status_t* status);
+int dvd_custom_fs_info(fs_info_t* status);
 int dvd_custom_status_flash(file_status_t *dst);
 int dvd_custom_readdir(file_entry_t *dst, uint32_t fd);
 int dvd_custom_unlink(char *path);

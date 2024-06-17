@@ -284,6 +284,33 @@ int dvd_custom_status(file_status_t* status) {
     return 0;
 }
 
+int dvd_custom_fs_info(fs_info_t* status) {
+    memset(status, 0, sizeof(fs_info_t));
+    status->result = 1;
+
+    _di_regs[DI_SR] = (DI_SR_BRKINTMASK | DI_SR_TCINTMASK | DI_SR_DEINT | DI_SR_DEINTMASK);
+    _di_regs[DI_CVR] = 0; // clear cover int
+
+    _di_regs[DI_CMDBUF0] = DVD_FLIPPY_FILEAPI_BASE | IPC_FS_INFO;
+    _di_regs[DI_CMDBUF1] = 0;
+    _di_regs[DI_CMDBUF2] = 0;
+
+    _di_regs[DI_MAR] = (u32)(status) & 0x1FFFFFFF;
+    _di_regs[DI_LENGTH] = sizeof(fs_info_t);
+    _di_regs[DI_CR] = (DI_CR_DMA | DI_CR_TSTART); // start transfer
+
+    while (_di_regs[DI_CR] & DI_CR_TSTART)
+        ; // transfer complete register
+
+    DCInvalidateRange(status, sizeof(fs_info_t));
+
+    // check if ERR was asserted
+    if (_di_regs[DI_SR] & DI_SR_DEINT) {
+        return -1;
+    }
+    return 0;
+}
+
 int dvd_custom_readdir(file_entry_t* dst, unsigned int fd) {
     _di_regs[DI_SR] = (DI_SR_BRKINTMASK | DI_SR_TCINTMASK | DI_SR_DEINT | DI_SR_DEINTMASK);
     _di_regs[DI_CVR] = 0; // clear cover int
