@@ -670,6 +670,10 @@ int patch_gcm(ExecutableFile *filesToPatch, int numToPatch) {
 		// Make patch trailer
 		XXH128_hash_t old_hash, new_hash = XXH3_128bits(buffer, sizeToRead);
 		
+		extern void DumpHex(const void* data, size_t size);
+		print_gecko("patch hash:\n");
+		DumpHex(&new_hash, sizeof(new_hash));
+
 		if(patched) {
 			if(!patchDeviceReady) {
 				deviceHandler_setStatEnabled(0);

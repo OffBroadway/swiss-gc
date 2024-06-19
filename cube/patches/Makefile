@@ -12,7 +12,7 @@ DEST    = ../swiss/source/patches
 DISASM    = disassembly
 
 .NOTPARALLEL:
-all: clean codehandler cpatches stub sdpatch ideexipatch dvdpatch usbgeckopatch wkfpatch fsppatch gcloaderpatch
+all: clean codehandler cpatches stub sdpatch ideexipatch dvdpatch usbgeckopatch wkfpatch fsppatch gcloaderpatch flippydrivepatch
 
 stub: reboot.bin stub.bin
 sdpatch: sd.bin sd.card.bin sd.dtk.bin sd.eth.bin
@@ -22,6 +22,7 @@ usbgeckopatch: usbgecko.bin
 wkfpatch: wkf.bin wkf.card.bin wkf.dtk.bin
 fsppatch: fsp.bin fsp.dtk.bin fsp.eth.bin
 gcloaderpatch: gcloader-v1.bin gcloader-v1.card.bin gcloader-v2.bin gcloader-v2.card.bin gcloader-v2.dtk.bin gcloader-v2.eth.bin
+flippydrivepatch: flippydrive.bin #flippydrive.card.bin
 
 clean:
 	@rm -f *.bin *.elf *.o
@@ -675,7 +676,7 @@ gcloader-v2.eth.bin:
 flippydrive.bin:
 	@echo Building FlippyDrive Patch ...
 	@$(CC) -Os $(OPTS) -c base/base.S
-	@$(CC) -Os $(OPTS) -c base/emulator.c -DASYNC_READ -DGCODE
+	@$(CC) -Os $(OPTS) -c base/emulator.c -DASYNC_READ -DGCODE -DFLIPPY
 	@$(CC) -Os $(OPTS) -c base/emulator_dvd.c -DREAD_SPEED_TIER=1
 	@$(CC) -Os $(OPTS) -c base/DVDMath.c
 	@$(CC) -Os $(OPTS) -c base/frag.c -DDEVICE_PATCHES=1
@@ -691,5 +692,5 @@ flippydrive.bin:
 	@mkdir -p $(DISASM)
 	@$(OBJDUMP) -D flippydrive.elf > $(DISASM)/flippydrive.txt
 	@$(OBJCOPY) -O binary --set-section-flags .bss.*=alloc,load,contents flippydrive.elf flippydrive.bin
-	@$(BIN2S) -H $(DEST)/gcloader_v2_bin.h flippydrive.bin > $(DEST)/flippydrive.bin.s
+	@$(BIN2S) -H $(DEST)/flippydrive_bin.h flippydrive.bin > $(DEST)/flippydrive.bin.s
 	@rm -f *.bin *.elf *.o

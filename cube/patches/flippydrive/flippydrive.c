@@ -290,26 +290,26 @@ bool gcode_push_queue(void *buffer, uint32_t length, uint32_t offset, uint64_t s
 
 bool do_read_write_async(void *buffer, uint32_t length, uint32_t offset, uint64_t sector, bool write, frag_callback callback)
 {
+	// gprintf("do_read_write_async: buffer=%p, length=%u, offset=%u, sector=%llu, write=%d, callback=%p\n", buffer, length, offset, sector, write, callback);
+
 	uint32_t command;
-	sector = offset / SECTOR_SIZE + sector;
-	offset = offset % SECTOR_SIZE;
 
 	if (write) {
-		length = SECTOR_SIZE;
-		command = DI_CMD_GCODE_WRITE_BUFFER << 24;
-	} else if ((uintptr_t)buffer % 32 + offset) {
-		length = MIN(length, SECTOR_SIZE - offset);
-		command = DI_CMD_GCODE_READ << 24 | 0x01;
-	} else
-		command = DI_CMD_GCODE_READ << 24;
+		// length = SECTOR_SIZE;
+		// command = DI_CMD_WRITE << 24;
+		while(1);
+	}
 
-	return gcode_push_queue(buffer, length, offset, sector, command, callback);
+	// file read
+	command = DI_CMD_READ << 24;
+	command |= (sector & 0xFF) << 16;
+	return gcode_push_queue(buffer, length, offset >> 2, sector, command, callback);
 }
 
 bool do_read_disc(void *buffer, uint32_t length, uint32_t offset, const frag_t *frag, frag_callback callback)
 {
 	// gprintf("do_read_disc: buffer=%p, length=%u, offset=%u, frag=%p, callback=%p\n", buffer, length, offset, frag, callback);
-	_puts("do_read_disc\n");
+
 	if (length)
 		return gcode_push_queue(buffer, length, offset >> 2, frag->sector, DI_CMD_READ << 24, callback);
 	else
@@ -333,11 +333,14 @@ void schedule_read(OSTick ticks)
 		return;
 	}
 
+	// gprintf("schedule_read: dvd.buffer=%p, dvd.length=%u, dvd.offset=%u, dvd.read=%d\n", dvd.buffer, dvd.length, dvd.offset, dvd.read);
 	frag_read_async(*VAR_CURRENT_DISC, dvd.buffer, dvd.length, dvd.offset, read_callback);
 }
 
 void perform_read(uint32_t address, uint32_t length, uint32_t offset)
 {
+	// gprintf("perform_read: address=%u, length=%u, offset=%u\n", address, length, offset);
+
 	if ((*VAR_IGR_TYPE & 0x80) && offset == 0x2440) {
 		*VAR_CURRENT_DISC = FRAGS_APPLOADER;
 		*VAR_SECOND_DISC = 0;

@@ -348,6 +348,21 @@ int install_code(int final)
 			}
 		}
 		print_gecko("Installing Patch for GC Loader\r\n");
+	} else if(devices[DEVICE_CUR] == &__device_flippydrive) {
+		switch (devices[DEVICE_CUR]->emulated()) {
+			case EMU_READ:
+			case EMU_READ | EMU_BUS_ARBITER:
+				patch     = flippydrive_bin;
+				patchSize = flippydrive_bin_size;
+				break;
+			// case EMU_READ | EMU_MEMCARD | EMU_BUS_ARBITER:
+			// 	patch     = flippydrive_card_bin;
+			// 	patchSize = flippydrive_card_bin_size;
+			// 	break;
+			default:
+				return 0;
+		}
+		print_gecko("Installing Patch for Flippy Drive\r\n");
 	}
 	if (!final) {
 		print_gecko("Space for patch remaining: %i\r\n", top_addr - LO_RESERVE);

@@ -49,7 +49,7 @@ device_info* deviceHandler_FlippyDrive_info(file_handle* file) {
 		print_gecko("Unable to determine size\n");
 		return NULL;
 	}
-	
+
 	last_fat_info.freeSpace = __builtin_bswap64(*(u64 *)(&fsInfo.free));
 	last_fat_info.totalSpace = __builtin_bswap64(*(u64 *)(&fsInfo.total));
 	last_fat_info.metric = true;
@@ -191,38 +191,34 @@ s64 deviceHandler_FlippyDrive_seekFile(file_handle* file, s64 where, u32 type) {
 
 s32 deviceHandler_FlippyDrive_readFile(file_handle* file, void* buffer, u32 length) {
 	char *filename = getDevicePath(file->name);
-	print_gecko("CALL deviceHandler_FlippyDrive_readFile(%s, %p, %x)\n", filename, buffer, length);
+	print_gecko("CALL deviceHandler_FlippyDrive_readFile(%s, %p, %u, %x)\n", filename, buffer, file->offset, length);
 
-	// open the file
-	int err = dvd_custom_open(filename, FILE_ENTRY_TYPE_FILE, IPC_FILE_FLAG_DISABLECACHE | IPC_FILE_FLAG_DISABLEFASTSEEK | IPC_FILE_FLAG_DISABLESPEEDEMU);
-	if (err)
-	{
-		print_gecko("DI error during open dir\n");
-		return -1;
+	if(!file->fileBase) {
+		// open the file
+		int err = dvd_custom_open(filename, FILE_ENTRY_TYPE_FILE, IPC_FILE_FLAG_DISABLECACHE | IPC_FILE_FLAG_DISABLEFASTSEEK | IPC_FILE_FLAG_DISABLESPEEDEMU);
+		if (err)
+		{
+			print_gecko("DI error during open dir\n");
+			return -1;
+		}
+
+		GCN_ALIGNED(file_status_t) status;
+		err = dvd_custom_status(&status);
+		if (err || status.result != 0) {
+			print_gecko("Failed to open file %s\n", filename);
+			return -1;
+		}
+
+		file->size = __builtin_bswap64(*(u64*)(&status.fsize));
+		// file->size = ((u32*)&status)[2]; // Dolphin only
+		print_gecko("File size: %x\n", file->size);
+
+		file->fileBase = status.fd;
+		print_gecko("File base: %u\n", status.fd);
 	}
-
-	GCN_ALIGNED(file_status_t) status;
-	err = dvd_custom_status(&status);
-	if (err || status.result != 0) {
-		print_gecko("Failed to open file %s\n", filename);
-		return -1;
-	}
-
-	file->size = __builtin_bswap64(*(u64*)(&status.fsize));
-
-	// // reads will be done in 4k chunks and copied to the buffer
-	// static GCN_ALIGNED(u8) read_buffer[0x1000];
-	// for (u32 i = 0; i < length; i += 0x1000) {
-	// 	u32 read_length = (length - i) > 0x1000 ? 0x1000 : (length - i);
-	// 	dvd_read(read_buffer, read_length, file->offset + i, status->fd);
-	// 	memcpy((char*)buffer + i, read_buffer, read_length);
-	// }
 
 	// read the file
-	dvd_read_data(buffer, length, file->offset, status.fd);
-
-	// close the file
-	dvd_custom_close(status.fd);
+	dvd_read_data(buffer, length, file->offset, file->fileBase);
 
 	// TODO: check if this is err
 	s32 bytes_read = length;
@@ -236,6 +232,13 @@ s32 deviceHandler_FlippyDrive_writeFile(file_handle* file, const void* buffer, u
 
 	// char *a = getDevicePath(file->name);
 	// print_gecko("TEST deviceHandler_FlippyDrive_writeFile(%s)\n", a);
+
+	// always close before writing
+	if (file->fileBase) {
+		// close the file
+		dvd_custom_close(file->fileBase);
+		file->fileBase = 0;
+	}
 
 	// open the file
 	dvd_custom_open(filename, FILE_ENTRY_TYPE_FILE, IPC_FILE_FLAG_WRITE | IPC_FILE_FLAG_DISABLECACHE | IPC_FILE_FLAG_DISABLEFASTSEEK | IPC_FILE_FLAG_DISABLESPEEDEMU);
@@ -279,6 +282,83 @@ s32 deviceHandler_FlippyDrive_writeFile(file_handle* file, const void* buffer, u
 
 s32 deviceHandler_FlippyDrive_setupFile(file_handle* file, file_handle* file2, ExecutableFile* filesToPatch, int numToPatch) {
 	print_gecko("CALL deviceHandler_FlippyDrive_setupFile(%s)\n", file->name);
+
+	int i;
+	file_frag *fragList = NULL;
+	u32 numFrags = 0;
+
+	// Check if there are any fragments in our patch location for this game
+	if(devices[DEVICE_PATCHES] != NULL) {
+		print_gecko("Save Patch device found\r\n");
+
+		// Look for patch files, if we find some, open them and add them as fragments
+		file_handle patchFile;
+		for(i = 0; i < numToPatch; i++) {
+			if(!filesToPatch[i].patchFile) continue;
+			if(!getFragments(DEVICE_PATCHES, filesToPatch[i].patchFile, &fragList, &numFrags, filesToPatch[i].file == file2, filesToPatch[i].offset, filesToPatch[i].size)) {
+				free(fragList);
+				return 0;
+			}
+		}
+
+		if(swissSettings.igrType == IGR_BOOTBIN || endsWith(file->name,".tgc")) {
+			memset(&patchFile, 0, sizeof(file_handle));
+			concat_path(patchFile.name, devices[DEVICE_PATCHES]->initial->name, "swiss/patches/apploader.img");
+
+			ApploaderHeader apploaderHeader;
+			if(devices[DEVICE_PATCHES]->readFile(&patchFile, &apploaderHeader, sizeof(ApploaderHeader)) != sizeof(ApploaderHeader) || apploaderHeader.rebootSize != reboot_bin_size) {
+				devices[DEVICE_PATCHES]->deleteFile(&patchFile);
+
+				memset(&apploaderHeader, 0, sizeof(ApploaderHeader));
+				apploaderHeader.rebootSize = reboot_bin_size;
+
+				devices[DEVICE_PATCHES]->seekFile(&patchFile, 0, DEVICE_HANDLER_SEEK_SET);
+				devices[DEVICE_PATCHES]->writeFile(&patchFile, &apploaderHeader, sizeof(ApploaderHeader));
+				devices[DEVICE_PATCHES]->writeFile(&patchFile, reboot_bin, reboot_bin_size);
+				devices[DEVICE_PATCHES]->closeFile(&patchFile);
+			}
+			
+			getFragments(DEVICE_PATCHES, &patchFile, &fragList, &numFrags, FRAGS_APPLOADER, 0x2440, 0);
+			devices[DEVICE_PATCHES]->closeFile(&patchFile);
+		}
+
+		if(devices[DEVICE_PATCHES] != devices[DEVICE_CUR]) {
+			s32 exi_channel, exi_device;
+			if(getExiDeviceByLocation(devices[DEVICE_PATCHES]->location, &exi_channel, &exi_device)) {
+				exi_device = sdgecko_getDevice(exi_channel);
+				// Card Type
+				*(vu8*)VAR_SD_SHIFT = sdgecko_getAddressingType(exi_channel) ? 0:9;
+				// Copy the actual freq
+				*(vu8*)VAR_EXI_CPR = (exi_channel << 6) | ((1 << exi_device) << 3) | sdgecko_getSpeed(exi_channel);
+				// Device slot (0, 1 or 2)
+				*(vu8*)VAR_EXI_SLOT = (exi_device << 2) | exi_channel;
+				*(vu32**)VAR_EXI_REGS = ((vu32(*)[5])0xCC006800)[exi_channel];
+			}
+		}
+	}
+
+	if(!getFragments(DEVICE_CUR, file, &fragList, &numFrags, FRAGS_DISC_1, 0, 0)) {
+		free(fragList);
+		return 0;
+	}
+
+	// map the file
+	dvd_set_default_fd(file->fileBase);
+
+	if(file2) {
+		if(!getFragments(DEVICE_CUR, file2, &fragList, &numFrags, FRAGS_DISC_2, 0, 0)) {
+			free(fragList);
+			return 0;
+		}
+	}
+
+	if(fragList) {
+		print_frag_list(fragList, numFrags);
+		*(vu32**)VAR_FRAG_LIST = installPatch2(fragList, (numFrags + 1) * sizeof(file_frag));
+		free(fragList);
+		fragList = NULL;
+	}
+
 	return 1;
 }
 
@@ -291,10 +371,18 @@ s32 deviceHandler_FlippyDrive_init(file_handle* file) {
 	return 0;
 }
 
-s32 deviceHandler_FlippyDrive_deinit(file_handle* file) { return 0; }
+s32 deviceHandler_FlippyDrive_deinit(file_handle* file) {
+	return 0;
+}
 
 s32 deviceHandler_FlippyDrive_closeFile(file_handle* file) {
 	print_gecko("CALL deviceHandler_FlippyDrive_closeFile(%s)\n", file->name);
+
+	if(file && file->fileBase) {
+		dvd_custom_close(file->fileBase);
+		file->fileBase = 0;
+	}
+
 	return 0;
 }
 

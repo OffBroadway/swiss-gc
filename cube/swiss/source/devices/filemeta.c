@@ -356,6 +356,8 @@ void populate_meta(file_handle *f) {
 			f->meta->displayName = "Up to parent directory";
 		}
 	}
+
+	devices[DEVICE_CUR]->closeFile(f);
 }
 
 void repopulate_meta(file_handle *f) {

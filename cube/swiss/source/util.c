@@ -127,7 +127,7 @@ char *stripInvalidChars(char *str) {
 }
 
 /* Autoboot DOL from the current device, from the current autoboot_dols list */
-char *autoboot_dols[] = { "/boot.dol", "/boot2.dol" }; // Keep this list sorted
+char *autoboot_dols[] = { "/boot3.dol", "/boot2.dol" }; // Keep this list sorted
 void load_auto_dol() {
 	u8 rev_buf[sizeof(GITREVISION) - 1]; // Don't include the NUL termination in the comparison
 

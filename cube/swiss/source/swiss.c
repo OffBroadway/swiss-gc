@@ -1126,6 +1126,11 @@ void load_app(ExecutableFile *fileToPatch)
 			XXH128_hash_t old_hash, new_hash = XXH3_128bits(buffer, sizeToRead);
 			if(devices[DEVICE_PATCHES]->readFile(fileToPatch->patchFile, &old_hash, sizeof(old_hash)) != sizeof(old_hash) ||
 				!XXH128_isEqual(old_hash, new_hash)) {
+				extern void DumpHex(const void* data, size_t size);
+				print_gecko("old hash:\n");
+				DumpHex(&old_hash, sizeof(old_hash));
+				print_gecko("new hash:\n");
+				DumpHex(&new_hash, sizeof(new_hash));
 				devices[DEVICE_PATCHES]->deleteFile(fileToPatch->patchFile);
 				message = "Failed integrity check!";
 				goto fail;

@@ -672,6 +672,11 @@ static void di_execute_command()
 {
 	uint32_t result = 0;
 
+#ifdef FLIPPY
+	// extern void gprintf(const char *fmt, ...);
+	// gprintf("di_execute_command %08x\n", di.reg.cmdbuf0);
+#endif
+
 	switch (di.reg.cmdbuf0 >> 24) {
 		case DI_CMD_READ:
 		{
