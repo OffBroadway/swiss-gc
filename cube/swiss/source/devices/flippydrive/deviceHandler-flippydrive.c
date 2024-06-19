@@ -24,6 +24,16 @@
 // // TODO: alloc this on heap
 // char flippyCurrentFile[PATHNAME_MAX];
 
+static uint8_t flippy_read_speed_emu = IPC_FILE_FLAG_DISABLESPEEDEMU;
+
+static void enable_speed_emu() {
+	flippy_read_speed_emu = IPC_FILE_FLAG_DISABLESPEEDEMU;
+}
+
+static void disable_speed_emu() {
+	flippy_read_speed_emu = IPC_FILE_FLAG_NONE;
+}
+
 file_handle initial_FlippyDrive =
 	{ "fldr:/", // directory
 	  0ULL,     // fileBase (u64)
@@ -196,7 +206,7 @@ s32 deviceHandler_FlippyDrive_readFile(file_handle* file, void* buffer, u32 leng
 
 	if(!file->fileBase) {
 		// open the file
-		int err = dvd_custom_open(filename, FILE_ENTRY_TYPE_FILE, IPC_FILE_FLAG_DISABLECACHE | IPC_FILE_FLAG_DISABLEFASTSEEK | IPC_FILE_FLAG_DISABLESPEEDEMU);
+		int err = dvd_custom_open(filename, FILE_ENTRY_TYPE_FILE, IPC_FILE_FLAG_DISABLECACHE | IPC_FILE_FLAG_DISABLEFASTSEEK | flippy_read_speed_emu);
 		if (err)
 		{
 			print_gecko("DI error during open dir\n");
@@ -242,7 +252,7 @@ s32 deviceHandler_FlippyDrive_writeFile(file_handle* file, const void* buffer, u
 	}
 
 	// open the file
-	dvd_custom_open(filename, FILE_ENTRY_TYPE_FILE, IPC_FILE_FLAG_WRITE | IPC_FILE_FLAG_DISABLECACHE | IPC_FILE_FLAG_DISABLEFASTSEEK | IPC_FILE_FLAG_DISABLESPEEDEMU);
+	dvd_custom_open(filename, FILE_ENTRY_TYPE_FILE, IPC_FILE_FLAG_WRITE | IPC_FILE_FLAG_DISABLECACHE | IPC_FILE_FLAG_DISABLEFASTSEEK | flippy_read_speed_emu);
 
 	GCN_ALIGNED(file_status_t) status;
 	int err = dvd_custom_status(&status);
@@ -281,6 +291,17 @@ s32 deviceHandler_FlippyDrive_writeFile(file_handle* file, const void* buffer, u
 	return length;
 }
 
+s32 deviceHandler_FlippyDrive_closeFile(file_handle* file) {
+	print_gecko("CALL deviceHandler_FlippyDrive_closeFile(%s)\n", file->name);
+
+	if(file && file->fileBase) {
+		dvd_custom_close(file->fileBase);
+		file->fileBase = 0;
+	}
+
+	return 0;
+}
+
 s32 deviceHandler_FlippyDrive_setupFile(file_handle* file, file_handle* file2, ExecutableFile* filesToPatch, int numToPatch) {
 	print_gecko("CALL deviceHandler_FlippyDrive_setupFile(%s)\n", file->name);
 
@@ -291,11 +312,13 @@ s32 deviceHandler_FlippyDrive_setupFile(file_handle* file, file_handle* file2, E
 	// Check if there are any fragments in our patch location for this game
 	if(devices[DEVICE_PATCHES] != NULL) {
 		print_gecko("Save Patch device found\r\n");
+		enable_speed_emu();
 
 		// Look for patch files, if we find some, open them and add them as fragments
 		file_handle patchFile;
 		for(i = 0; i < numToPatch; i++) {
 			if(!filesToPatch[i].patchFile) continue;
+			deviceHandler_FlippyDrive_closeFile(filesToPatch[i].patchFile);
 			if(!getFragments(DEVICE_PATCHES, filesToPatch[i].patchFile, &fragList, &numFrags, filesToPatch[i].file == file2, filesToPatch[i].offset, filesToPatch[i].size)) {
 				free(fragList);
 				return 0;
@@ -338,15 +361,14 @@ s32 deviceHandler_FlippyDrive_setupFile(file_handle* file, file_handle* file2, E
 		}
 	}
 
+	devices[DEVICE_PATCHES]->closeFile(file);
 	if(!getFragments(DEVICE_CUR, file, &fragList, &numFrags, FRAGS_DISC_1, 0, 0)) {
 		free(fragList);
 		return 0;
 	}
 
-	// map the file
-	dvd_set_default_fd(file->fileBase);
-
 	if(file2) {
+		devices[DEVICE_PATCHES]->closeFile(file2);
 		if(!getFragments(DEVICE_CUR, file2, &fragList, &numFrags, FRAGS_DISC_2, 0, 0)) {
 			free(fragList);
 			return 0;
@@ -365,25 +387,11 @@ s32 deviceHandler_FlippyDrive_setupFile(file_handle* file, file_handle* file2, E
 
 
 s32 deviceHandler_FlippyDrive_init(file_handle* file) {
-	// memset(flippyCurrentFile, 0, sizeof(flippyCurrentFile));
-
-	// do more??
-
+	disable_speed_emu();
 	return 0;
 }
 
 s32 deviceHandler_FlippyDrive_deinit(file_handle* file) {
-	return 0;
-}
-
-s32 deviceHandler_FlippyDrive_closeFile(file_handle* file) {
-	print_gecko("CALL deviceHandler_FlippyDrive_closeFile(%s)\n", file->name);
-
-	if(file && file->fileBase) {
-		dvd_custom_close(file->fileBase);
-		file->fileBase = 0;
-	}
-
 	return 0;
 }
 
@@ -410,8 +418,7 @@ s32 deviceHandler_FlippyDrive_deleteFile(file_handle* file) {
 
 bool deviceHandler_FlippyDrive_test() {
 	while(DVD_LowGetCoverStatus() == 0);
-	// return swissSettings.hasDVDDrive && driveInfo.rel_date == 0x20080714;
-	return true;
+	return swissSettings.hasDVDDrive && driveInfo.rel_date == 0x20220426;
 }
 
 char* deviceHandler_FlippyDrive_status(file_handle* file) { return 0; }

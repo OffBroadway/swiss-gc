@@ -233,8 +233,8 @@ int main(int argc, char *argv[])
 			DVD_StopMotor(&commandBlock);
 		}
 	}
-	// else if () {
-	// 	find_existing_entry("fldr:/", true);
+	// else if (device == &__device_flippydrive) {
+	// 	find_existing_entry("fldr:/XD.iso", true);
 	// }
 	else if(device == &__device_gcloader) {
 		if(gcloaderVersionStr != NULL) {

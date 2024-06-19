@@ -30,9 +30,11 @@
 #include "interrupt.h"
 #include "ipl.h"
 
-// #include "debug.c"
+#include "debug.c"
 
 #define FLIPPY 1
+#define DI_CMD_FLIPPY_FILEAPI 0xB5
+#define FLIPPY_FILEAPI_RESET 0x05
 
 #ifndef QUEUE_SIZE
 #ifdef FLIPPY
@@ -66,33 +68,13 @@ static struct {
 	bool read;
 } dvd;
 
-static void gcode_set_disc_frags(uint32_t disc, const frag_t *frag, uint32_t count)
+static void gcode_reset()
 {
-	DI[2] = DI_CMD_GCODE_SET_DISC_FRAGS << 24 | 0x01;
-	DI[3] = disc;
-	DI[4] = count;
+	DI[2] = (DI_CMD_FLIPPY_FILEAPI << 24) | FLIPPY_FILEAPI_RESET;
+	DI[3] = 0xAA55F641; // IPC_MAGIC
 	DI[7] = 0b001;
 	while (DI[7] & 0b001);
-	if (DI[8]) return;
-
-	while (count--) {
-		DI[2] = frag->offset;
-		DI[3] = frag->size;
-		DI[4] = frag->sector;
-		DI[7] = 0b001;
-		while (DI[7] & 0b001);
-		if (!DI[8]) break;
-		frag++;
-	}
 }
-
-// static void gcode_set_disc_number(uint32_t disc)
-// {
-// 	DI[2] = DI_CMD_GCODE_SET_DISC_FRAGS << 24 | 0x02;
-// 	DI[3] = disc;
-// 	DI[7] = 0b001;
-// 	while (DI[7] & 0b001);
-// }
 
 static void di_interrupt_handler(OSInterrupt interrupt, OSContext *context);
 
@@ -291,6 +273,7 @@ bool gcode_push_queue(void *buffer, uint32_t length, uint32_t offset, uint64_t s
 bool do_read_write_async(void *buffer, uint32_t length, uint32_t offset, uint64_t sector, bool write, frag_callback callback)
 {
 	// gprintf("do_read_write_async: buffer=%p, length=%u, offset=%u, sector=%llu, write=%d, callback=%p\n", buffer, length, offset, sector, write, callback);
+	_puts("do_read_write_async\n");
 
 	uint32_t command;
 
@@ -308,13 +291,19 @@ bool do_read_write_async(void *buffer, uint32_t length, uint32_t offset, uint64_
 
 bool do_read_disc(void *buffer, uint32_t length, uint32_t offset, const frag_t *frag, frag_callback callback)
 {
-	// gprintf("do_read_disc: buffer=%p, length=%u, offset=%u, frag=%p, callback=%p\n", buffer, length, offset, frag, callback);
-
-	if (length)
-		return gcode_push_queue(buffer, length, offset >> 2, frag->sector, DI_CMD_READ << 24, callback);
-	else
-		return gcode_push_queue(buffer, length, offset >> 2, frag->sector, DI_CMD_SEEK << 24, callback);
+	return do_read_write_async(buffer, length, offset, frag->sector, false, callback);
 }
+
+// bool do_read_disc(void *buffer, uint32_t length, uint32_t offset, const frag_t *frag, frag_callback callback)
+// {
+// 	// gprintf("do_read_disc: buffer=%p, length=%u, offset=%u, frag=%p, callback=%p\n", buffer, length, offset, frag, callback);
+// 	_puts("do_read_disc\n");
+
+// 	if (length)
+// 		return gcode_push_queue(buffer, length, offset >> 2, frag->sector, DI_CMD_READ << 24, callback);
+// 	else
+// 		return gcode_push_queue(buffer, length, offset >> 2, frag->sector, DI_CMD_SEEK << 24, callback);
+// }
 
 void schedule_read(OSTick ticks)
 {
@@ -334,12 +323,14 @@ void schedule_read(OSTick ticks)
 	}
 
 	// gprintf("schedule_read: dvd.buffer=%p, dvd.length=%u, dvd.offset=%u, dvd.read=%d\n", dvd.buffer, dvd.length, dvd.offset, dvd.read);
+	_puts("schedule_read\n");
 	frag_read_async(*VAR_CURRENT_DISC, dvd.buffer, dvd.length, dvd.offset, read_callback);
 }
 
 void perform_read(uint32_t address, uint32_t length, uint32_t offset)
 {
 	// gprintf("perform_read: address=%u, length=%u, offset=%u\n", address, length, offset);
+	_puts("perform_read\n");
 
 	if ((*VAR_IGR_TYPE & 0x80) && offset == 0x2440) {
 		*VAR_CURRENT_DISC = FRAGS_APPLOADER;
@@ -374,14 +365,7 @@ bool change_disc(void)
 	}
 
 	if (*VAR_SECOND_DISC) {
-		const frag_t *frag = NULL;
-		int fragnum = frag_get_list(*VAR_CURRENT_DISC ^ 1, &frag);
-
-		if (fragnum == 1) {
-			fragnum = frag->fragnum;
-			frag    = frag->frag;
-			return gcode_push_queue((void *)frag, fragnum, 0, 0, DI_CMD_GCODE_SET_DISC_FRAGS << 24 | 0x01, callback);
-		}
+		*VAR_CURRENT_DISC ^= 1;
 	}
 
 	return false;
@@ -389,6 +373,8 @@ bool change_disc(void)
 
 void reset_devices(void)
 {
+	_puts("reset_devices\n");
+
 	while (DI[7] & 0b001);
 
 	if (AI[0] & 0b0000001) {
@@ -401,10 +387,7 @@ void reset_devices(void)
 		AI[0] &= ~0b0000001;
 	}
 
-	const frag_t *frag = NULL;
-	int fragnum = frag_get_list(FRAGS_BOOT_GCM, &frag);
-	gcode_set_disc_frags(0, frag, fragnum);
-	// gcode_set_disc_number(0);
+	gcode_reset();
 
 	while (EXI[EXI_CHANNEL_0][3] & 0b000001);
 	while (EXI[EXI_CHANNEL_1][3] & 0b000001);
