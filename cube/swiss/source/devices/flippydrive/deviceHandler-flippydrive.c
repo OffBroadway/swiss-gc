@@ -301,7 +301,21 @@ s32 deviceHandler_FlippyDrive_closeFile(file_handle* file) {
 s32 deviceHandler_FlippyDrive_deleteFile(file_handle* file) {
 	deviceHandler_FlippyDrive_closeFile(file);
 
-	// TODO: unlink
+	int err = dvd_custom_unlink(getDevicePath(file->name));
+	if(err)
+	{
+		print_gecko("DI error during unlink\n");
+		return -1;
+	}
+
+	GCN_ALIGNED(file_status_t) lastStatus;
+	err = dvd_custom_status(&lastStatus);
+	if (lastStatus.result != 0 || err)
+	{
+		print_gecko("Unable to unlink %s, returned %d\n", getDevicePath(file->name), lastStatus.result);
+		return -1;
+	}
+
 	return 0;
 }
 
