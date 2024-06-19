@@ -1,6 +1,7 @@
 /* deviceHandler-flippydrive.c
 	- device implementation for FlippyDrive ODE
 	by radicalplants
+	by ChrisPVille
  */
 
 #include <stdlib.h>
