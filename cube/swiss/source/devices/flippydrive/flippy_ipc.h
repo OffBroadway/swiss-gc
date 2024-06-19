@@ -45,6 +45,7 @@ typedef enum {
     IPC_READ_STATUS        = 0x00,
     IPC_SET_DEFAULT_FD     = 0x01, //Purely 2040
 
+    IPC_RESET              = 0x05, //Purely 2040
     IPC_FS_INFO            = 0x06,
     IPC_FILE_MKDIR         = 0x07,
     IPC_FILE_READ          = 0x08,
@@ -165,8 +166,9 @@ enum file_entry_type_enum {
 #pragma pack(pop)
 
 static const size_t ipc_payloadlen[IPC_CMD_MAX] = {
-    0, 0, 0, 0, 0, 0,
-    sizeof(fs_info_t),  // CMD 0-5
+    0, 0, 0, 0, 0,
+    0,                    // RESET
+    0,                    // FS_INFO
     sizeof(file_entry_t), // FILE_MKDIR
     0,                    // FILE_READ
     0,                    // FILE_WRITE
