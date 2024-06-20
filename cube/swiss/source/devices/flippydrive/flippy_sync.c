@@ -260,9 +260,6 @@ int dvd_read_data(void* dst, unsigned int len, uint64_t offset, unsigned int fd)
 }
 
 int dvd_custom_status(file_status_t* status) {
-    memset(status, 0, sizeof(file_status_t));
-    status->result = 1;
-
     _di_regs[DI_SR] = (DI_SR_BRKINTMASK | DI_SR_TCINTMASK | DI_SR_DEINT | DI_SR_DEINTMASK);
     _di_regs[DI_CVR] = 0; // clear cover int
 
