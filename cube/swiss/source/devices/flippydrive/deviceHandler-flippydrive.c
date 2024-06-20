@@ -367,6 +367,8 @@ s32 deviceHandler_FlippyDrive_setupFile(file_handle* file, file_handle* file2, E
 		return 0;
 	}
 
+	dvd_set_default_fd(file->fileBase);
+
 	if(file2) {
 		devices[DEVICE_PATCHES]->closeFile(file2);
 		if(!getFragments(DEVICE_CUR, file2, &fragList, &numFrags, FRAGS_DISC_2, 0, 0)) {
