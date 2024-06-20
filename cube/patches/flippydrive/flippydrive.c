@@ -291,19 +291,22 @@ bool do_read_write_async(void *buffer, uint32_t length, uint32_t offset, uint64_
 
 bool do_read_disc(void *buffer, uint32_t length, uint32_t offset, const frag_t *frag, frag_callback callback)
 {
-	return do_read_write_async(buffer, length, offset, frag->sector, false, callback);
+	//gprintf("do_read_disc: buffer=%p, length=%u, offset=%u, frag=%p, callback=%p\n", buffer, length, offset, frag, callback);
+ 	_puts("do_read_disc\n");
+	uint32_t cmd;
+	if (length)
+	{
+		cmd = DI_CMD_READ << 24;
+		cmd |= (frag->sector % 0xFF) << 16; //FD
+	}
+ 	else
+	{
+		cmd = DI_CMD_SEEK << 24;
+		cmd |= (frag->sector % 0xFF) << 16; // FD
+	}
+
+	return gcode_push_queue(buffer, length, offset >> 2, frag->sector, cmd, callback);
 }
-
-// bool do_read_disc(void *buffer, uint32_t length, uint32_t offset, const frag_t *frag, frag_callback callback)
-// {
-// 	// gprintf("do_read_disc: buffer=%p, length=%u, offset=%u, frag=%p, callback=%p\n", buffer, length, offset, frag, callback);
-// 	_puts("do_read_disc\n");
-
-// 	if (length)
-// 		return gcode_push_queue(buffer, length, offset >> 2, frag->sector, DI_CMD_READ << 24, callback);
-// 	else
-// 		return gcode_push_queue(buffer, length, offset >> 2, frag->sector, DI_CMD_SEEK << 24, callback);
-// }
 
 void schedule_read(OSTick ticks)
 {
