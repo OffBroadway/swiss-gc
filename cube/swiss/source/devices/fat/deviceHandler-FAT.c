@@ -9,6 +9,8 @@
 #include <malloc.h>
 #include <ogc/dvd.h>
 #include <ogc/machine/processor.h>
+#include <sdcard/card_cmn.h>
+#include <sdcard/card_io.h>
 #include <sdcard/gcsd.h>
 #include "deviceHandler.h"
 #include "gui/FrameBufferMagic.h"
@@ -337,35 +339,29 @@ s32 deviceHandler_FAT_init(file_handle* file) {
 	// SD Card - Slot A
 	if(isSDCard && slot == 0) {
 		setSDGeckoSpeed(slot, swissSettings.exiSpeed);
-		__device_sd_a.features |= FEAT_BOOT_GCM;
 		file->status = fatFs_Mount(DEV_SDA, "sda:/");
-		if(file->status != FR_OK) {
-			setSDGeckoSpeed(slot, false);
-			__device_sd_a.features &= ~FEAT_BOOT_GCM;
-			file->status = fatFs_Mount(DEV_SDA, "sda:/");
-		}
+		if(sdgecko_getSpeed(slot) < EXI_SPEED32MHZ)
+			__device_sd_a.quirks |=  QUIRK_EXI_SPEED;
+		else
+			__device_sd_a.quirks &= ~QUIRK_EXI_SPEED;
 	}
 	// SD Card - Slot B
 	if(isSDCard && slot == 1) {
 		setSDGeckoSpeed(slot, swissSettings.exiSpeed);
-		__device_sd_b.features |= FEAT_BOOT_GCM;
 		file->status = fatFs_Mount(DEV_SDB, "sdb:/");
-		if(file->status != FR_OK) {
-			setSDGeckoSpeed(slot, false);
-			__device_sd_b.features &= ~FEAT_BOOT_GCM;
-			file->status = fatFs_Mount(DEV_SDB, "sdb:/");
-		}
+		if(sdgecko_getSpeed(slot) < EXI_SPEED32MHZ)
+			__device_sd_b.quirks |=  QUIRK_EXI_SPEED;
+		else
+			__device_sd_b.quirks &= ~QUIRK_EXI_SPEED;
 	}
 	// SD Card - SD2SP2
 	if(isSDCard && slot == 2) {
 		setSDGeckoSpeed(slot, swissSettings.exiSpeed);
-		__device_sd_c.features |= FEAT_BOOT_GCM;
 		file->status = fatFs_Mount(DEV_SDC, "sdc:/");
-		if(file->status != FR_OK) {
-			setSDGeckoSpeed(slot, false);
-			__device_sd_c.features &= ~FEAT_BOOT_GCM;
-			file->status = fatFs_Mount(DEV_SDC, "sdc:/");
-		}
+		if(sdgecko_getSpeed(slot) < EXI_SPEED32MHZ)
+			__device_sd_c.quirks |=  QUIRK_EXI_SPEED;
+		else
+			__device_sd_c.quirks &= ~QUIRK_EXI_SPEED;
 	}
 	// IDE-EXI - Slot A
 	if(!isSDCard && slot == 0) {
@@ -435,16 +431,27 @@ bool deviceHandler_FAT_test_sd_a() {
 	return ret;
 }
 bool deviceHandler_FAT_test_sd_b() {
-	return __io_gcsdb.startup() && __io_gcsdb.shutdown();
+	bool ret = __io_gcsdb.startup() && __io_gcsdb.shutdown();
+
+	if (ret) {
+		if (sdgecko_getTransferMode(1) == CARDIO_TRANSFER_DMA)
+			__device_sd_b.hwName = "Semi-Passive SD Card Adapter";
+		else
+			__device_sd_b.hwName = "Passive SD Card Adapter";
+	}
+	return ret;
 }
 bool deviceHandler_FAT_test_sd_c() {
 	bool ret = __io_gcsd2.startup() && __io_gcsd2.shutdown();
 
-	if (sdgecko_getDevice(2) == EXI_DEVICE_0)
-		__device_sd_c.hwName = "SD Card Adapter";
-	else
-		__device_sd_c.hwName = "ETH2GC Sidecar+";
-
+	if (ret) {
+		if (sdgecko_getTransferMode(2) == CARDIO_TRANSFER_DMA)
+			__device_sd_c.hwName = "Semi-Passive SD Card Adapter";
+		else if (sdgecko_getDevice(2) == EXI_DEVICE_0)
+			__device_sd_c.hwName = "Passive SD Card Adapter";
+		else
+			__device_sd_c.hwName = "ETH2GC Sidecar+";
+	}
 	return ret;
 }
 bool deviceHandler_FAT_test_ata_a() {
