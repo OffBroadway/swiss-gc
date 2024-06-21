@@ -777,7 +777,7 @@ static void di_execute_command()
 		{
 			if (di.status == 0 && change_disc()) {
 				di_open_cover();
-				#ifndef GCODE
+				#if !defined(GCODE) || defined(FLIPPY)
 				OSSetAlarm(&cover_alarm, OSSecondsToTicks(1.5), di_close_cover);
 				#endif
 			}

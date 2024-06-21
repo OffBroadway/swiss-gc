@@ -35,6 +35,7 @@
 #define FLIPPY 1
 #define DI_CMD_FLIPPY_FILEAPI 0xB5
 #define FLIPPY_FILEAPI_RESET 0x05
+#define FLIPPY_FILEAPI_DEFAULT_FD 0x01
 
 #ifndef QUEUE_SIZE
 #ifdef FLIPPY
@@ -67,6 +68,15 @@ static struct {
 	uint32_t offset;
 	bool read;
 } dvd;
+
+static void gcode_set_default(uint8_t fd)
+{
+	DI[2] = (DI_CMD_FLIPPY_FILEAPI << 24) | FLIPPY_FILEAPI_DEFAULT_FD | (fd << 16);
+	DI[3] = 0;
+	DI[4] = 0;
+	DI[7] = 0b001;
+	while (DI[7] & 0b001);
+}
 
 static void gcode_reset()
 {
@@ -104,56 +114,31 @@ static void gcode_read_queued(void)
 			DI[3] = offset;
 			DI[7] = 0b001;
 			break;
-		case DI_CMD_GCODE_READ:
-			switch (command & 0xFF) {
-				default:
-					DI[2] = command;
-					DI[3] = sector;
-					DI[4] = length;
-					DI[5] = (uint32_t)buffer;
-					DI[6] = length;
-					DI[7] = 0b011;
-					break;
-				case 0x01:
-					if (sector == gcode.last_sector) {
-						gcode_done_queued();
-						return;
-					} else {
-						gcode.last_sector = sector;
-						buffer = gcode.buffer;
+		// case DI_CMD_FLIPPY_FILEAPI:
+		// 	switch(command & 0xFF) {
+		// 		case FLIPPY_FILEAPI_DEFAULT_FD:
+		// 			// _puts("gcode_read_queued DI_CMD_FLIPPY_FILEAPI\n");
+		// 			DI[2] = command;
+		// 			DI[3] = 0;
+		// 			DI[4] = 0;
+		// 			DI[7] = 0b001;
+		// 			break;
+		// 	}
+		// 	break;
+		// case DI_CMD_GCODE_WRITE_BUFFER:
+		// 	DI[2] = command;
+		// 	DI[5] = (uint32_t)buffer;
+		// 	DI[6] = length;
+		// 	DI[7] = 0b111;
+		// 	break;
+		// case DI_CMD_GCODE_WRITE:
+		// 	if (gcode.last_sector == sector)
+		// 		gcode.last_sector = ~0;
 
-						DCInvalidateRange(__builtin_assume_aligned(buffer, 32), SECTOR_SIZE);
-
-						DI[2] = DI_CMD_GCODE_READ << 24;
-						DI[3] = sector;
-						DI[4] = SECTOR_SIZE;
-						DI[5] = (uint32_t)buffer;
-						DI[6] = SECTOR_SIZE;
-						DI[7] = 0b011;
-					}
-					break;
-			}
-			break;
-		case DI_CMD_GCODE_SET_DISC_FRAGS:
-			DI[2] = command;
-			DI[3] = offset;
-			DI[4] = length;
-			DI[7] = 0b001;
-			break;
-		case DI_CMD_GCODE_WRITE_BUFFER:
-			DI[2] = command;
-			DI[5] = (uint32_t)buffer;
-			DI[6] = length;
-			DI[7] = 0b111;
-			break;
-		case DI_CMD_GCODE_WRITE:
-			if (gcode.last_sector == sector)
-				gcode.last_sector = ~0;
-
-			DI[2] = command;
-			DI[3] = sector;
-			DI[7] = 0b001;
-			break;
+		// 	DI[2] = command;
+		// 	DI[3] = sector;
+		// 	DI[7] = 0b001;
+		// 	break;
 		case DI_CMD_AUDIO_STREAM:
 			DI[2] = command;
 			DI[3] = offset;
@@ -179,48 +164,31 @@ static void gcode_done_queued(void)
 	uint32_t command = gcode.queued->command;
 
 	switch (command >> 24) {
-		case DI_CMD_GCODE_READ:
-			switch (command & 0xFF) {
-				case 0x01:
-					buffer = memcpy(buffer, *gcode.buffer + offset, length);
-					break;
-			}
-			break;
-		case DI_CMD_GCODE_SET_DISC_FRAGS:
-			switch (command & 0xFF) {
-				case 0x01:
-					if (DI[8]) {
-						length = 0;
-					} else {
-						const frag_t *frag = buffer;
+		// case DI_CMD_FLIPPY_FILEAPI:
+		// 	switch(command & 0xFF) {
+		// 		case FLIPPY_FILEAPI_DEFAULT_FD:
+		// 			const frag_t *frag = buffer;
 
-						for (int i = 0; i < length; i++) {
-							DI[2] = frag[i].offset;
-							DI[3] = frag[i].size;
-							DI[4] = frag[i].sector;
-							DI[7] = 0b001;
-							while (DI[7] & 0b001);
-							if (!DI[8]) {
-								*VAR_CURRENT_DISC = frag[i].file;
-								break;
-							}
-						}
-					}
-					break;
-				case 0x02:
-					if (!DI[8])
-						*VAR_CURRENT_DISC = offset;
-					break;
-			}
-			break;
-		case DI_CMD_GCODE_WRITE_BUFFER:
-			gcode.queued->command = DI_CMD_GCODE_WRITE << 24;
-			gcode_read_queued();
-			return;
-		case DI_CMD_GCODE_WRITE:
-			if (DI[8])
-				length = 0;
-			break;
+		// 			DI[2] = frag->offset;
+		// 			DI[3] = frag->size;
+		// 			DI[4] = frag->sector;
+		// 			DI[7] = 0b001;
+		// 			while (DI[7] & 0b001);
+		// 			if (!DI[8]) {
+		// 				*VAR_CURRENT_DISC = frag->file;
+		// 				break;
+		// 			}
+		// 			break;
+		// 	}
+		// 	break;
+		// case DI_CMD_GCODE_WRITE_BUFFER:
+		// 	gcode.queued->command = DI_CMD_GCODE_WRITE << 24;
+		// 	gcode_read_queued();
+		// 	return;
+		// case DI_CMD_GCODE_WRITE:
+		// 	if (DI[8])
+		// 		length = 0;
+		// 	break;
 		case DI_CMD_AUDIO_STREAM:
 		case DI_CMD_REQUEST_AUDIO_STATUS:
 			*(uint32_t *)buffer = DI[8];
@@ -362,13 +330,19 @@ void perform_read(uint32_t address, uint32_t length, uint32_t offset)
 
 bool change_disc(void)
 {
-	void callback(void *address, uint32_t length)
-	{
-		OSSetAlarm(&cover_alarm, OSSecondsToTicks(1.5), di_close_cover);
-	}
-
 	if (*VAR_SECOND_DISC) {
-		*VAR_CURRENT_DISC ^= 1;
+		// _puts("change_disc\n");
+		const frag_t *frag = NULL;
+		frag_get_list(*VAR_CURRENT_DISC ^ 1, &frag);
+
+		if (frag) {
+			// _puts("change_disc frag\n");
+			uint8_t fd = frag->sector & 0xFF;
+			gcode_set_default(fd);
+
+			*VAR_CURRENT_DISC ^= 1;
+			return true;
+		}
 	}
 
 	return false;
