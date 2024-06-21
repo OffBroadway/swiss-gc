@@ -309,16 +309,26 @@ s32 deviceHandler_FlippyDrive_setupFile(file_handle* file, file_handle* file2, E
 	file_frag *fragList = NULL;
 	u32 numFrags = 0;
 
+	// Cleanup files that are opened without speed emulation
+	enable_speed_emu();
+	devices[DEVICE_CUR]->closeFile(file);
+	devices[DEVICE_CUR]->closeFile(file2);
+
 	// Check if there are any fragments in our patch location for this game
 	if(devices[DEVICE_PATCHES] != NULL) {
 		print_gecko("Save Patch device found\r\n");
-		enable_speed_emu();
 
 		// Look for patch files, if we find some, open them and add them as fragments
 		file_handle patchFile;
 		for(i = 0; i < numToPatch; i++) {
 			if(!filesToPatch[i].patchFile) continue;
-			deviceHandler_FlippyDrive_closeFile(filesToPatch[i].patchFile);
+
+			// Cleanup files that are opened without speed emulation
+			if(devices[DEVICE_PATCHES] == devices[DEVICE_CUR]) {
+				devices[DEVICE_PATCHES]->closeFile(filesToPatch[i].patchFile);
+			}
+
+			// Populate fragments for patch files
 			if(!getFragments(DEVICE_PATCHES, filesToPatch[i].patchFile, &fragList, &numFrags, filesToPatch[i].file == file2, filesToPatch[i].offset, filesToPatch[i].size)) {
 				free(fragList);
 				return 0;
@@ -361,16 +371,15 @@ s32 deviceHandler_FlippyDrive_setupFile(file_handle* file, file_handle* file2, E
 		}
 	}
 
-	devices[DEVICE_PATCHES]->closeFile(file);
 	if(!getFragments(DEVICE_CUR, file, &fragList, &numFrags, FRAGS_DISC_1, 0, 0)) {
 		free(fragList);
 		return 0;
 	}
 
+	// set the current default DVD + Audio Streaming file
 	dvd_set_default_fd(file->fileBase);
 
 	if(file2) {
-		devices[DEVICE_PATCHES]->closeFile(file2);
 		if(!getFragments(DEVICE_CUR, file2, &fragList, &numFrags, FRAGS_DISC_2, 0, 0)) {
 			free(fragList);
 			return 0;
