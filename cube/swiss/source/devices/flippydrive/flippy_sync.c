@@ -238,22 +238,34 @@ int dvd_read_data(void* dst, unsigned int len, uint64_t offset, unsigned int fd)
     unsigned int total_read = 0;
     unsigned int remaining = len;
 
-    GCN_ALIGNED(u8) aligned_buffer[FD_IPC_MAXRESP];
+    if((uint32_t)dst & 0x1F || (len & 0x1F)) //Buffer or length is not aligned
+    {
+        GCN_ALIGNED(u8) aligned_buffer[FD_IPC_MAXRESP];
 
-    while (remaining > 0) {
-        unsigned int to_read = remaining > FD_IPC_MAXRESP ? FD_IPC_MAXRESP : ((remaining + 31) & ~31);
-        unsigned int to_copy = remaining > FD_IPC_MAXRESP ? FD_IPC_MAXRESP : remaining;
+        while (remaining > 0) {
+            unsigned int to_read = remaining > FD_IPC_MAXRESP ? FD_IPC_MAXRESP : ((remaining + 31) & ~31);
+            unsigned int to_copy = remaining > FD_IPC_MAXRESP ? FD_IPC_MAXRESP : remaining;
 
-        int result = dvd_read(aligned_buffer, to_read, current_offset, fd);
-        if (result != 0) {
-            print_gecko("dvd_read_data failed: %d\n", result);
-            return result;  // Return the error code if dvd_read fails
+            int result = dvd_read(aligned_buffer, to_read, current_offset, fd);
+            if (result != 0) {
+                print_gecko("dvd_read_data failed: %d\n", result);
+                return result;  // Return the error code if dvd_read fails
+            }
+
+            memcpy(dst + total_read, aligned_buffer, to_copy);
+            total_read += to_copy;
+            current_offset += to_copy;
+            remaining -= to_copy;
         }
-
-        memcpy(dst + total_read, aligned_buffer, to_copy);
-        total_read += to_copy;
-        current_offset += to_copy;
-        remaining -= to_copy;
+    }
+    else //Buffer and length are aligned
+    {
+        int result = dvd_read(dst, len, offset, fd);
+        if (result != 0)
+        {
+            print_gecko("dvd_read_data failed: %d\n", result);
+            return result; // Return the error code if dvd_read fails
+        }
     }
 
     return 0;
