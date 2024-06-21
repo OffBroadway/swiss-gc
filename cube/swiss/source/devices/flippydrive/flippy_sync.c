@@ -238,27 +238,39 @@ int dvd_read_data(void* dst, unsigned int len, uint64_t offset, unsigned int fd)
     unsigned int total_read = 0;
     unsigned int remaining = len;
 
-    if((uint32_t)dst & 0x1F || (len & 0x1F)) //Buffer or length is not aligned
+    if(((uint32_t)dst & 0x1F) || (len & 0x1F) || (offset & 0x3)) //Buffer, length, or offset is not aligned
     {
         GCN_ALIGNED(u8) aligned_buffer[FD_IPC_MAXRESP];
 
-        while (remaining > 0) {
-            unsigned int to_read = remaining > FD_IPC_MAXRESP ? FD_IPC_MAXRESP : ((remaining + 31) & ~31);
-            unsigned int to_copy = remaining > FD_IPC_MAXRESP ? FD_IPC_MAXRESP : remaining;
+        while (remaining > 0)
+        {
+            // Ensure the read offset is aligned to 4 bytes
+            uint64_t aligned_offset = current_offset & ~0x3;
+            uint32_t offset_adjustment = current_offset - aligned_offset;
 
-            int result = dvd_read(aligned_buffer, to_read, current_offset, fd);
+            // Calculate the amount to read, taking alignment into account
+            unsigned int to_read = remaining > FD_IPC_MAXRESP ? FD_IPC_MAXRESP : remaining;
+            if (to_read + offset_adjustment > FD_IPC_MAXRESP) {
+                to_read = FD_IPC_MAXRESP - offset_adjustment;
+            }
+            to_read = (to_read + 31) & ~31; // Round up to nearest 32 bytes
+
+            // Perform the read into the aligned buffer
+            int result = dvd_read(aligned_buffer, to_read, aligned_offset, fd);
             if (result != 0) {
                 print_gecko("dvd_read_data failed: %d\n", result);
                 return result;  // Return the error code if dvd_read fails
             }
 
-            memcpy(dst + total_read, aligned_buffer, to_copy);
+            // Copy the relevant portion from the aligned buffer to destination
+            unsigned int to_copy = remaining > FD_IPC_MAXRESP ? FD_IPC_MAXRESP : remaining;
+            memcpy(dst + total_read, aligned_buffer + offset_adjustment, to_copy);
             total_read += to_copy;
             current_offset += to_copy;
             remaining -= to_copy;
         }
     }
-    else //Buffer and length are aligned
+    else //Buffer, length, and offset are aligned
     {
         int result = dvd_read(dst, len, offset, fd);
         if (result != 0)
