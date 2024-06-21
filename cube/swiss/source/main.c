@@ -105,6 +105,12 @@ int main(int argc, char *argv[])
 	if(usb_isgeckoalive(1)) usb_flush(1);
 	print_gecko("Welcome!\r\n");
 
+	// Check novideo param
+	if (argv && argv[0] != NULL && strstr(argv[0], "novideo") != NULL) {
+		print_gecko("Hiding video output\r\n");
+		setDisableVideo(TRUE);
+	}
+
 	// Register all devices supported (order matters for boot devices)
 	int i = 0;
 	for(i = 0; i < MAX_DEVICES; i++)

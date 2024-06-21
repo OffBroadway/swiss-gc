@@ -273,7 +273,7 @@ bool gcode_push_queue(void *buffer, uint32_t length, uint32_t offset, uint64_t s
 bool do_read_write_async(void *buffer, uint32_t length, uint32_t offset, uint64_t sector, bool write, frag_callback callback)
 {
 	// gprintf("do_read_write_async: buffer=%p, length=%u, offset=%u, sector=%llu, write=%d, callback=%p\n", buffer, length, offset, sector, write, callback);
-	_puts("do_read_write_async\n");
+	// _puts("do_read_write_async\n");
 
 	uint32_t command;
 
@@ -292,7 +292,7 @@ bool do_read_write_async(void *buffer, uint32_t length, uint32_t offset, uint64_
 bool do_read_disc(void *buffer, uint32_t length, uint32_t offset, const frag_t *frag, frag_callback callback)
 {
 	//gprintf("do_read_disc: buffer=%p, length=%u, offset=%u, frag=%p, callback=%p\n", buffer, length, offset, frag, callback);
- 	_puts("do_read_disc\n");
+	// _puts("do_read_disc\n");
 	uint32_t cmd;
 	if (length)
 	{
@@ -326,14 +326,14 @@ void schedule_read(OSTick ticks)
 	}
 
 	// gprintf("schedule_read: dvd.buffer=%p, dvd.length=%u, dvd.offset=%u, dvd.read=%d\n", dvd.buffer, dvd.length, dvd.offset, dvd.read);
-	_puts("schedule_read\n");
+	// _puts("schedule_read\n");
 	frag_read_async(*VAR_CURRENT_DISC, dvd.buffer, dvd.length, dvd.offset, read_callback);
 }
 
 void perform_read(uint32_t address, uint32_t length, uint32_t offset)
 {
 	// gprintf("perform_read: address=%u, length=%u, offset=%u\n", address, length, offset);
-	_puts("perform_read\n");
+	// _puts("perform_read\n");
 
 	if ((*VAR_IGR_TYPE & 0x80) && offset == 0x2440) {
 		*VAR_CURRENT_DISC = FRAGS_APPLOADER;
@@ -376,7 +376,7 @@ bool change_disc(void)
 
 void reset_devices(void)
 {
-	_puts("reset_devices\n");
+	// _puts("reset_devices\n");
 
 	while (DI[7] & 0b001);
 

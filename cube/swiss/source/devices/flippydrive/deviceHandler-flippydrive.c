@@ -202,7 +202,7 @@ s64 deviceHandler_FlippyDrive_seekFile(file_handle* file, s64 where, u32 type) {
 
 s32 deviceHandler_FlippyDrive_readFile(file_handle* file, void* buffer, u32 length) {
 	char *filename = getDevicePath(file->name);
-	print_gecko("CALL deviceHandler_FlippyDrive_readFile(%s, %p, %u, %x)\n", filename, buffer, file->offset, length);
+	// print_gecko("CALL deviceHandler_FlippyDrive_readFile(%s, %p, %u, %x)\n", filename, buffer, file->offset, length);
 
 	if(!file->fileBase) {
 		// open the file
@@ -228,7 +228,13 @@ s32 deviceHandler_FlippyDrive_readFile(file_handle* file, void* buffer, u32 leng
 		print_gecko("File base: %u\n", status.fd);
 	}
 
+	if (buffer == NULL) {
+		print_gecko("Buffer is NULL\n");
+		return 0;
+	}
+
 	// read the file
+	// print_gecko("CALL dvd_read_data(%p, %x, %x, %x)\n", buffer, length, file->offset, file->fileBase);
 	dvd_read_data(buffer, length, file->offset, file->fileBase);
 
 	// TODO: check if this is err
