@@ -1,6 +1,7 @@
 *.d
 *.dol
 *.elf
+*.ELF
 *.map
 *.o
 /cube/packer/SDLOADER.BIN
