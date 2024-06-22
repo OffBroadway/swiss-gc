@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (__system_argv) {
-		print_gecko("__system_argv->magic: %08X\r\n", __system_argv->magic);
+		print_gecko("__system_argv->argvMagic: %08X\r\n", __system_argv->argvMagic);
 		print_gecko("__system_argv->commandLine: %s\r\n", __system_argv->commandLine);
 		print_gecko("__system_argv->length: %d\r\n", __system_argv->length);
 	} else {
