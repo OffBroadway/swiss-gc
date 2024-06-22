@@ -197,6 +197,10 @@ void setDisableVideo(bool disabled) {
 	}
 }
 
+bool getDisableVideo() {
+	return disableVideoOutput;
+}
+
 void setVideoMode(GXRModeObj *m) {
 	updateVideoMode(m);
 	if(xfb[0]) free(MEM_K1_TO_K0(xfb[0]));

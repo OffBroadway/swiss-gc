@@ -105,6 +105,20 @@ int main(int argc, char *argv[])
 	if(usb_isgeckoalive(1)) usb_flush(1);
 	print_gecko("Welcome!\r\n");
 
+	if (argv && argv[0]) {
+		print_gecko("argv[0]: %s\r\n", argv[0]);
+	} else {
+		print_gecko("argv: %p\r\n", argv);
+	}
+
+	if (__system_argv) {
+		print_gecko("__system_argv->magic: %08X\r\n", __system_argv->magic);
+		print_gecko("__system_argv->commandLine: %s\r\n", __system_argv->commandLine);
+		print_gecko("__system_argv->length: %d\r\n", __system_argv->length);
+	} else {
+		print_gecko("__system_argv: %p\r\n", __system_argv);
+	}
+
 	// Check novideo param
 	if (argv && argv[0] != NULL && strstr(argv[0], "novideo") != NULL) {
 		print_gecko("Hiding video output\r\n");
