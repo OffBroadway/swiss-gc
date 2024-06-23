@@ -311,10 +311,6 @@ s32 deviceHandler_FlippyDrive_closeFile(file_handle* file) {
 s32 deviceHandler_FlippyDrive_setupFile(file_handle* file, file_handle* file2, ExecutableFile* filesToPatch, int numToPatch) {
 	print_gecko("CALL deviceHandler_FlippyDrive_setupFile(%s)\n", file->name);
 
-	int i;
-	file_frag *fragList = NULL;
-	u32 numFrags = 0;
-
 	// Cleanup files that are opened without speed emulation
 	enable_speed_emu();
 	devices[DEVICE_CUR]->closeFile(file);
@@ -322,8 +318,12 @@ s32 deviceHandler_FlippyDrive_setupFile(file_handle* file, file_handle* file2, E
 
 	// Check if there are any fragments in our patch location for this game
 	if(devices[DEVICE_PATCHES] != NULL) {
+		int i;
+		file_frag *fragList = NULL;
+		u32 numFrags = 0;
+		
 		print_gecko("Save Patch device found\r\n");
-
+		
 		// Look for patch files, if we find some, open them and add them as fragments
 		file_handle patchFile;
 		for(i = 0; i < numToPatch; i++) {
@@ -336,6 +336,21 @@ s32 deviceHandler_FlippyDrive_setupFile(file_handle* file, file_handle* file2, E
 
 			// Populate fragments for patch files
 			if(!getFragments(DEVICE_PATCHES, filesToPatch[i].patchFile, &fragList, &numFrags, filesToPatch[i].file == file2, filesToPatch[i].offset, filesToPatch[i].size)) {
+				free(fragList);
+				return 0;
+			}
+		}
+		
+		if(!getFragments(DEVICE_CUR, file, &fragList, &numFrags, FRAGS_DISC_1, 0, 0)) {
+			free(fragList);
+			return 0;
+		}
+
+		// set the current default DVD + Audio Streaming file
+		dvd_set_default_fd(file->fileBase);
+		
+		if(file2) {
+			if(!getFragments(DEVICE_CUR, file2, &fragList, &numFrags, FRAGS_DISC_2, 0, 0)) {
 				free(fragList);
 				return 0;
 			}
@@ -369,35 +384,40 @@ s32 deviceHandler_FlippyDrive_setupFile(file_handle* file, file_handle* file2, E
 				concatf_path(txtbuffer, devices[DEVICE_PATCHES]->initial->name, "swiss/saves/MemoryCardA.%s.raw", wodeRegionToString(GCMDisk.RegionCode));
 				ensure_path(DEVICE_PATCHES, "swiss/saves", NULL);
 				devices[DEVICE_PATCHES]->renameFile(&patchFile, txtbuffer);	// TODO remove this in our next major release
-				
+
 				if(devices[DEVICE_PATCHES]->readFile(&patchFile, NULL, 0) != 0) {
 					devices[DEVICE_PATCHES]->seekFile(&patchFile, 16*1024*1024, DEVICE_HANDLER_SEEK_SET);
 					devices[DEVICE_PATCHES]->writeFile(&patchFile, NULL, 0);
 					devices[DEVICE_PATCHES]->closeFile(&patchFile);
 				}
-				
+
 				if(getFragments(DEVICE_PATCHES, &patchFile, &fragList, &numFrags, FRAGS_CARD_A, 0, 31.5*1024*1024))
 					*(vu8*)VAR_CARD_A_ID = (patchFile.size * 8/1024/1024) & 0xFC;
 				devices[DEVICE_PATCHES]->closeFile(&patchFile);
 			}
-			
+
 			if(devices[DEVICE_PATCHES] != &__device_sd_b) {
 				memset(&patchFile, 0, sizeof(file_handle));
 				concatf_path(patchFile.name, devices[DEVICE_PATCHES]->initial->name, "swiss/patches/MemoryCardB.%s.raw", wodeRegionToString(GCMDisk.RegionCode));
 				concatf_path(txtbuffer, devices[DEVICE_PATCHES]->initial->name, "swiss/saves/MemoryCardB.%s.raw", wodeRegionToString(GCMDisk.RegionCode));
 				ensure_path(DEVICE_PATCHES, "swiss/saves", NULL);
 				devices[DEVICE_PATCHES]->renameFile(&patchFile, txtbuffer);	// TODO remove this in our next major release
-				
+
 				if(devices[DEVICE_PATCHES]->readFile(&patchFile, NULL, 0) != 0) {
 					devices[DEVICE_PATCHES]->seekFile(&patchFile, 16*1024*1024, DEVICE_HANDLER_SEEK_SET);
 					devices[DEVICE_PATCHES]->writeFile(&patchFile, NULL, 0);
 					devices[DEVICE_PATCHES]->closeFile(&patchFile);
 				}
-				
+
 				if(getFragments(DEVICE_PATCHES, &patchFile, &fragList, &numFrags, FRAGS_CARD_B, 0, 31.5*1024*1024))
 					*(vu8*)VAR_CARD_B_ID = (patchFile.size * 8/1024/1024) & 0xFC;
 				devices[DEVICE_PATCHES]->closeFile(&patchFile);
 			}
+
+			int write_buffer_size = 512 + 32;
+			char empty_buf[write_buffer_size];
+			void *write_buffer = installPatch2(empty_buf, write_buffer_size);
+			getFragments(DEVICE_CUR, file, &fragList, &numFrags, FRAGS_BUFFER, (u32)write_buffer, write_buffer_size);
 		}
 		
 		if(fragList) {
@@ -406,7 +426,7 @@ s32 deviceHandler_FlippyDrive_setupFile(file_handle* file, file_handle* file2, E
 			free(fragList);
 			fragList = NULL;
 		}
-
+		
 		if(devices[DEVICE_PATCHES] != devices[DEVICE_CUR]) {
 			s32 exi_channel, exi_device;
 			if(getExiDeviceByLocation(devices[DEVICE_PATCHES]->location, &exi_channel, &exi_device)) {
@@ -419,24 +439,11 @@ s32 deviceHandler_FlippyDrive_setupFile(file_handle* file, file_handle* file2, E
 				*(vu8*)VAR_EXI_SLOT = (exi_device << 2) | exi_channel;
 				*(vu32**)VAR_EXI_REGS = ((vu32(*)[5])0xCC006800)[exi_channel];
 			}
-		}
 	}
 
-	if(!getFragments(DEVICE_CUR, file, &fragList, &numFrags, FRAGS_DISC_1, 0, 0)) {
-		free(fragList);
-		return 0;
-	}
-
-	// set the current default DVD + Audio Streaming file
-	dvd_set_default_fd(file->fileBase);
-
-	if(file2) {
-		if(!getFragments(DEVICE_CUR, file2, &fragList, &numFrags, FRAGS_DISC_2, 0, 0)) {
-			free(fragList);
-			return 0;
-		}
-	}
-
+	if(file2 && file2->meta)
+		memcpy(VAR_DISC_2_ID, &file2->meta->diskId, sizeof(VAR_DISC_2_ID));
+	memcpy(VAR_DISC_1_ID, &GCMDisk, sizeof(VAR_DISC_1_ID));
 	return 1;
 }
 

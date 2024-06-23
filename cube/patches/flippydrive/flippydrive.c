@@ -242,6 +242,11 @@ bool do_read_write_async(void *buffer, uint32_t length, uint32_t offset, uint64_
 	if (write) {
 		// length = SECTOR_SIZE;
 		// command = DI_CMD_WRITE << 24;
+
+		const frag_t *frag = NULL;
+		frag_get_list(FRAGS_BUFFER, &frag);
+		void *write_buffer = (void*)frag->offset;
+
 		while(1);
 	}
 
