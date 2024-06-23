@@ -362,6 +362,51 @@ s32 deviceHandler_FlippyDrive_setupFile(file_handle* file, file_handle* file2, E
 			devices[DEVICE_PATCHES]->closeFile(&patchFile);
 		}
 
+		if(swissSettings.emulateMemoryCard) {
+			if(devices[DEVICE_PATCHES] != &__device_sd_a) {
+				memset(&patchFile, 0, sizeof(file_handle));
+				concatf_path(patchFile.name, devices[DEVICE_PATCHES]->initial->name, "swiss/patches/MemoryCardA.%s.raw", wodeRegionToString(GCMDisk.RegionCode));
+				concatf_path(txtbuffer, devices[DEVICE_PATCHES]->initial->name, "swiss/saves/MemoryCardA.%s.raw", wodeRegionToString(GCMDisk.RegionCode));
+				ensure_path(DEVICE_PATCHES, "swiss/saves", NULL);
+				devices[DEVICE_PATCHES]->renameFile(&patchFile, txtbuffer);	// TODO remove this in our next major release
+				
+				if(devices[DEVICE_PATCHES]->readFile(&patchFile, NULL, 0) != 0) {
+					devices[DEVICE_PATCHES]->seekFile(&patchFile, 16*1024*1024, DEVICE_HANDLER_SEEK_SET);
+					devices[DEVICE_PATCHES]->writeFile(&patchFile, NULL, 0);
+					devices[DEVICE_PATCHES]->closeFile(&patchFile);
+				}
+				
+				if(getFragments(DEVICE_PATCHES, &patchFile, &fragList, &numFrags, FRAGS_CARD_A, 0, 31.5*1024*1024))
+					*(vu8*)VAR_CARD_A_ID = (patchFile.size * 8/1024/1024) & 0xFC;
+				devices[DEVICE_PATCHES]->closeFile(&patchFile);
+			}
+			
+			if(devices[DEVICE_PATCHES] != &__device_sd_b) {
+				memset(&patchFile, 0, sizeof(file_handle));
+				concatf_path(patchFile.name, devices[DEVICE_PATCHES]->initial->name, "swiss/patches/MemoryCardB.%s.raw", wodeRegionToString(GCMDisk.RegionCode));
+				concatf_path(txtbuffer, devices[DEVICE_PATCHES]->initial->name, "swiss/saves/MemoryCardB.%s.raw", wodeRegionToString(GCMDisk.RegionCode));
+				ensure_path(DEVICE_PATCHES, "swiss/saves", NULL);
+				devices[DEVICE_PATCHES]->renameFile(&patchFile, txtbuffer);	// TODO remove this in our next major release
+				
+				if(devices[DEVICE_PATCHES]->readFile(&patchFile, NULL, 0) != 0) {
+					devices[DEVICE_PATCHES]->seekFile(&patchFile, 16*1024*1024, DEVICE_HANDLER_SEEK_SET);
+					devices[DEVICE_PATCHES]->writeFile(&patchFile, NULL, 0);
+					devices[DEVICE_PATCHES]->closeFile(&patchFile);
+				}
+				
+				if(getFragments(DEVICE_PATCHES, &patchFile, &fragList, &numFrags, FRAGS_CARD_B, 0, 31.5*1024*1024))
+					*(vu8*)VAR_CARD_B_ID = (patchFile.size * 8/1024/1024) & 0xFC;
+				devices[DEVICE_PATCHES]->closeFile(&patchFile);
+			}
+		}
+		
+		if(fragList) {
+			print_frag_list(fragList, numFrags);
+			*(vu32**)VAR_FRAG_LIST = installPatch2(fragList, (numFrags + 1) * sizeof(file_frag));
+			free(fragList);
+			fragList = NULL;
+		}
+
 		if(devices[DEVICE_PATCHES] != devices[DEVICE_CUR]) {
 			s32 exi_channel, exi_device;
 			if(getExiDeviceByLocation(devices[DEVICE_PATCHES]->location, &exi_channel, &exi_device)) {
@@ -390,13 +435,6 @@ s32 deviceHandler_FlippyDrive_setupFile(file_handle* file, file_handle* file2, E
 			free(fragList);
 			return 0;
 		}
-	}
-
-	if(fragList) {
-		print_frag_list(fragList, numFrags);
-		*(vu32**)VAR_FRAG_LIST = installPatch2(fragList, (numFrags + 1) * sizeof(file_frag));
-		free(fragList);
-		fragList = NULL;
 	}
 
 	return 1;

@@ -36,6 +36,7 @@
 #define DI_CMD_FLIPPY_FILEAPI 0xB5
 #define FLIPPY_FILEAPI_RESET 0x05
 #define FLIPPY_FILEAPI_DEFAULT_FD 0x01
+#define FLIPPY_FILEAPI_WRITE 0x09
 
 #ifndef QUEUE_SIZE
 #ifdef FLIPPY
@@ -46,7 +47,7 @@
 #endif
 #define SECTOR_SIZE 512
 
-static struct {
+	static struct {
 	char (*buffer)[SECTOR_SIZE];
 	uint32_t last_sector;
 	struct {
@@ -114,31 +115,24 @@ static void gcode_read_queued(void)
 			DI[3] = offset;
 			DI[7] = 0b001;
 			break;
-		// case DI_CMD_FLIPPY_FILEAPI:
-		// 	switch(command & 0xFF) {
-		// 		case FLIPPY_FILEAPI_DEFAULT_FD:
-		// 			// _puts("gcode_read_queued DI_CMD_FLIPPY_FILEAPI\n");
-		// 			DI[2] = command;
-		// 			DI[3] = 0;
-		// 			DI[4] = 0;
-		// 			DI[7] = 0b001;
-		// 			break;
-		// 	}
-		// 	break;
-		// case DI_CMD_GCODE_WRITE_BUFFER:
-		// 	DI[2] = command;
-		// 	DI[5] = (uint32_t)buffer;
-		// 	DI[6] = length;
-		// 	DI[7] = 0b111;
-		// 	break;
-		// case DI_CMD_GCODE_WRITE:
-		// 	if (gcode.last_sector == sector)
-		// 		gcode.last_sector = ~0;
-
-		// 	DI[2] = command;
-		// 	DI[3] = sector;
-		// 	DI[7] = 0b001;
-		// 	break;
+		case DI_CMD_FLIPPY_FILEAPI:
+			switch (command & 0x3F) {
+				case FLIPPY_FILEAPI_WRITE:
+					DI[2] = command;
+					DI[5] = (uint32_t)buffer;
+					DI[6] = length;
+					DI[7] = 0b111;
+					break;
+				default:
+					DI[2] = command;
+					DI[3] = 0;
+					DI[4] = 0;
+					DI[5] = 0;
+					DI[6] = 0;
+					DI[7] = 0b001;
+					break;
+			}
+			break;
 		case DI_CMD_AUDIO_STREAM:
 			DI[2] = command;
 			DI[3] = offset;
