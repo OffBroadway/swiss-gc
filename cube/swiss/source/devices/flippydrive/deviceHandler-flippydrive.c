@@ -413,11 +413,6 @@ s32 deviceHandler_FlippyDrive_setupFile(file_handle* file, file_handle* file2, E
 					*(vu8*)VAR_CARD_B_ID = (patchFile.size * 8/1024/1024) & 0xFC;
 				devices[DEVICE_PATCHES]->closeFile(&patchFile);
 			}
-
-			int write_buffer_size = 512 + 32;
-			char empty_buf[write_buffer_size];
-			void *write_buffer = installPatch2(empty_buf, write_buffer_size);
-			getFragments(DEVICE_CUR, file, &fragList, &numFrags, FRAGS_BUFFER, (u32)write_buffer, write_buffer_size);
 		}
 		
 		if(fragList) {
@@ -439,6 +434,7 @@ s32 deviceHandler_FlippyDrive_setupFile(file_handle* file, file_handle* file2, E
 				*(vu8*)VAR_EXI_SLOT = (exi_device << 2) | exi_channel;
 				*(vu32**)VAR_EXI_REGS = ((vu32(*)[5])0xCC006800)[exi_channel];
 			}
+		}
 	}
 
 	if(file2 && file2->meta)

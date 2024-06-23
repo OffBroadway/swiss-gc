@@ -119,8 +119,10 @@ static void gcode_read_queued(void)
 			switch (command & 0x3F) {
 				case FLIPPY_FILEAPI_WRITE:
 					DI[2] = command;
-					DI[5] = (uint32_t)buffer;
-					DI[6] = length;
+					DI[3] = offset;
+					DI[4] = length;
+					DI[5] = (uint32_t)buffer; //Guaranteed aligned
+					DI[6] = (length + 31) & 0xFFFFFFE0; //FlippyDrive will xfer rounded up to next 32-byte regardless of DI[4] to preserve DMAbility
 					DI[7] = 0b111;
 					break;
 				default:
@@ -238,21 +240,19 @@ bool do_read_write_async(void *buffer, uint32_t length, uint32_t offset, uint64_
 	// _puts("do_read_write_async\n");
 
 	uint32_t command;
+	command = (sector & 0xFF) << 16;
 
 	if (write) {
-		// length = SECTOR_SIZE;
-		// command = DI_CMD_WRITE << 24;
-
-		const frag_t *frag = NULL;
-		frag_get_list(FRAGS_BUFFER, &frag);
-		void *write_buffer = (void*)frag->offset;
-
-		while(1);
+		length = SECTOR_SIZE;
+		command |= DI_CMD_FLIPPY_FILEAPI << 24;
+		command |= FLIPPY_FILEAPI_WRITE;
+	}
+	else
+	{
+		command |= DI_CMD_READ << 24;
 	}
 
 	// file read
-	command = DI_CMD_READ << 24;
-	command |= (sector & 0xFF) << 16;
 	return gcode_push_queue(buffer, length, offset >> 2, sector, command, callback);
 }
 
