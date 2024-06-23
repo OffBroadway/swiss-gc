@@ -142,6 +142,5 @@ extern char VAR_RMODE[4];			// render mode
 #define FRAGS_CARD(n)	(4 + (n))
 #define FRAGS_CARD_A	FRAGS_CARD(0)
 #define FRAGS_CARD_B	FRAGS_CARD(1)
-#define FRAGS_BUFFER	6
 
 #endif

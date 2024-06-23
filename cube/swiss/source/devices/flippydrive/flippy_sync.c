@@ -419,10 +419,10 @@ int dvd_custom_mkdir(char *path) {
 int dvd_custom_rename(char *oldName, char* newName) {
     GCN_ALIGNED(file_entry_t) entries[2];
 
-    strncpy(entries[0].name, oldName, 256);
+    strncpy(entries[0].name, oldName, 255);
     entries[0].name[255] = 0;
 
-    strncpy(entries[0].name, newName, 256);
+    strncpy(entries[0].name, newName, 255);
     entries[1].name[255] = 0;
 
     DCFlushRange(&entries, sizeof(entries));
