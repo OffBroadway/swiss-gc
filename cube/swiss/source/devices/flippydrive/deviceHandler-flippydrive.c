@@ -474,6 +474,28 @@ s32 deviceHandler_FlippyDrive_deleteFile(file_handle* file) {
 	return 0;
 }
 
+s32 deviceHandler_FlippyDrive_renameFile(file_handle* file, char* name) {
+	deviceHandler_FlippyDrive_closeFile(file);
+
+	int err = dvd_custom_rename(getDevicePath(file->name), getDevicePath(name));
+	if(err)
+	{
+		print_gecko("DI error during rename\n");
+		return -1;
+	}
+
+	GCN_ALIGNED(file_status_t) lastStatus;
+	err = dvd_custom_status(&lastStatus);
+	if (lastStatus.result != 0 || err)
+	{
+		print_gecko("Unable to rename %s, returned %d\n", getDevicePath(file->name), lastStatus.result);
+		return -1;
+	}
+
+	strcpy(file->name, name); //TODO this seems silly given the return codes, why do this?
+	return 0;
+}
+
 bool deviceHandler_FlippyDrive_test() {
 	while(DVD_LowGetCoverStatus() == 0);
 	return swissSettings.hasDVDDrive && driveInfo.rel_date == 0x20220426;
@@ -511,7 +533,7 @@ DEVICEHANDLER_INTERFACE __device_flippydrive = {
 	.writeFile = deviceHandler_FlippyDrive_writeFile,
 	.closeFile = deviceHandler_FlippyDrive_closeFile,
 	.deleteFile = deviceHandler_FlippyDrive_deleteFile,
-	// .renameFile = deviceHandler_FAT_renameFile,
+	.renameFile = deviceHandler_FlippyDrive_renameFile,
 	.setupFile = deviceHandler_FlippyDrive_setupFile,
 	.deinit = deviceHandler_FlippyDrive_deinit,
 	.emulated = deviceHandler_FlippyDrive_emulated,
