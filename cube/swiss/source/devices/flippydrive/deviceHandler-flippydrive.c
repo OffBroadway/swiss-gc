@@ -61,8 +61,8 @@ device_info* deviceHandler_FlippyDrive_info(file_handle* file) {
 		return NULL;
 	}
 
-	last_fat_info.freeSpace = __builtin_bswap64(*(u64 *)(&fsInfo.free));
-	last_fat_info.totalSpace = __builtin_bswap64(*(u64 *)(&fsInfo.total));
+	last_fat_info.freeSpace = fsInfo.free;
+	last_fat_info.totalSpace = fsInfo.total;
 	last_fat_info.metric = true;
 
 	return &last_fat_info;
@@ -220,7 +220,7 @@ s32 deviceHandler_FlippyDrive_readFile(file_handle* file, void* buffer, u32 leng
 			return -1;
 		}
 
-		file->size = __builtin_bswap64(*(u64*)(&status.fsize));
+		file->size = status.fsize;
 		// file->size = ((u32*)&status)[2]; // Dolphin only
 		print_gecko("File size: %x\n", file->size);
 
@@ -267,7 +267,7 @@ s32 deviceHandler_FlippyDrive_writeFile(file_handle* file, const void* buffer, u
 		return -1;
 	}
 
-	file->size = __builtin_bswap64(*(u64*)(&status.fsize));
+	file->size = status.fsize;
 
 	// write the file in 16k chunks
 	for (u32 i = 0; i < length; i += 0x3fe0) {

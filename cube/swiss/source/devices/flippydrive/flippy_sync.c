@@ -300,6 +300,9 @@ int dvd_custom_status(file_status_t* status) {
 
     DCInvalidateRange(status, sizeof(file_status_t));
 
+    status->fsize   = __builtin_bswap64(*(u64 *)(&status->fsize));
+    status->result  = __builtin_bswap32(*(u32 *)(&status->result));
+
     // check if ERR was asserted
     if (_di_regs[DI_SR] & DI_SR_DEINT) {
         return -1;
@@ -326,6 +329,10 @@ int dvd_custom_fs_info(fs_info_t* status) {
         ; // transfer complete register
 
     DCInvalidateRange(status, sizeof(fs_info_t));
+
+    status->free   = __builtin_bswap64(*(u64 *)(&status->free));
+    status->total  = __builtin_bswap64(*(u64 *)(&status->total));
+    status->result = __builtin_bswap32(*(u32 *)(&status->result));
 
     // check if ERR was asserted
     if (_di_regs[DI_SR] & DI_SR_DEINT) {
