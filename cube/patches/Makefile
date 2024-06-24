@@ -768,7 +768,7 @@ flippydrive.bin:
 	@$(CC) -Os $(OPTS) -c base/emulator.c -DASYNC_READ -DGCODE -DFLIPPY
 	@$(CC) -Os $(OPTS) -c base/emulator_dvd.c -DREAD_SPEED_TIER=1
 	@$(CC) -Os $(OPTS) -c base/DVDMath.c
-	@$(CC) -Os $(OPTS) -c base/frag.c -DDEVICE_PATCHES=1
+	@$(CC) -Os $(OPTS) -c base/frag.c
 	@$(CC) -Os $(OPTS) -c base/interrupt.c -DIRQ_MASK=0b00000000000000000000010000000000
 	@$(CC) -Os $(OPTS) -c base/ipl.c
 	@$(CC) -Os $(OPTS) -c flippydrive/flippydrive.c -DDVD_MATH
@@ -782,17 +782,14 @@ flippydrive.bin:
 	@$(OBJDUMP) -D flippydrive.elf > $(DISASM)/flippydrive.txt
 	@$(OBJCOPY) -O binary --set-section-flags .bss.*=alloc,load,contents flippydrive.elf flippydrive.bin
 	@$(BIN2S) -H $(DEST)/flippydrive_bin.h flippydrive.bin > $(DEST)/flippydrive.bin.s
-	@rm -f *.bin *.elf *.o
+	@rm -f *.bin *.o
 
 flippydrive.card.bin:
 	@echo Building FlippyDrive Patch + CARD ...
-
-
-
 	@$(CC) -Os $(OPTS) -c base/base.S
 	@$(CC) -Os $(OPTS) -c base/emulator.c -DASYNC_READ -DCARD_EMULATOR -DGCODE -DFLIPPY
 	@$(CC) -Os $(OPTS) -c base/emulator_card.c -DASYNC_READ
-	@$(CC) -Os $(OPTS) -c base/frag.c -DDEVICE_PATCHES=1
+	@$(CC) -Os $(OPTS) -c base/frag.c
 	@$(CC) -Os $(OPTS) -c base/interrupt.c -DIRQ_MASK=0b00000000000000000000010000000000
 	@$(CC) -Os $(OPTS) -c base/ipl.c
 	@$(CC) -Os $(OPTS) -c flippydrive/flippydrive.c -DQUEUE_SIZE=4
@@ -804,4 +801,4 @@ flippydrive.card.bin:
 	@$(OBJDUMP) -D flippydrive.card.elf > $(DISASM)/flippydrive.card.txt
 	@$(OBJCOPY) -O binary --set-section-flags .bss.*=alloc,load,contents flippydrive.card.elf flippydrive.card.bin
 	@$(BIN2S) -H $(DEST)/flippydrive_card_bin.h flippydrive.card.bin > $(DEST)/flippydrive.card.bin.s
-	@rm -f *.bin *.elf *.o
+	@rm -f *.bin *.o

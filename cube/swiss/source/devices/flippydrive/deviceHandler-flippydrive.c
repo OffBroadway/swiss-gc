@@ -25,6 +25,7 @@
 // char flippyCurrentFile[PATHNAME_MAX];
 
 static uint8_t flippy_read_speed_emu = IPC_FILE_FLAG_DISABLESPEEDEMU;
+static bool flippy_write_open = false;
 
 static void enable_speed_emu() {
 	flippy_read_speed_emu = IPC_FILE_FLAG_DISABLESPEEDEMU;
@@ -290,9 +291,12 @@ s32 deviceHandler_FlippyDrive_writeFile(file_handle* file, const void* buffer, u
 		}
 	}
 
-	// close the file
-	dvd_custom_close(status.fd);
 	print_gecko("Write done\n");
+	if (flippy_write_open) {
+		file->fileBase = status.fd;
+	} else {
+		dvd_custom_close(status.fd);
+	}
 
 	file->offset += length;
 	return length;
@@ -379,6 +383,8 @@ s32 deviceHandler_FlippyDrive_setupFile(file_handle* file, file_handle* file2, E
 		}
 
 		if(swissSettings.emulateMemoryCard) {
+			flippy_write_open = true; // keep write files open
+
 			if(devices[DEVICE_PATCHES] != &__device_sd_a) {
 				memset(&patchFile, 0, sizeof(file_handle));
 				concatf_path(patchFile.name, devices[DEVICE_PATCHES]->initial->name, "swiss/saves/MemoryCardA.%s.raw", wodeRegionToString(GCMDisk.RegionCode));
@@ -390,9 +396,9 @@ s32 deviceHandler_FlippyDrive_setupFile(file_handle* file, file_handle* file2, E
 					devices[DEVICE_PATCHES]->closeFile(&patchFile);
 				}
 
+				devices[DEVICE_PATCHES]->writeFile(&patchFile, NULL, 0); // open in write mode
 				if(getFragments(DEVICE_PATCHES, &patchFile, &fragList, &numFrags, FRAGS_CARD_A, 0, 31.5*1024*1024))
 					*(vu8*)VAR_CARD_A_ID = (patchFile.size * 8/1024/1024) & 0xFC;
-				// devices[DEVICE_PATCHES]->closeFile(&patchFile);
 			}
 
 			if(devices[DEVICE_PATCHES] != &__device_sd_b) {
@@ -402,13 +408,13 @@ s32 deviceHandler_FlippyDrive_setupFile(file_handle* file, file_handle* file2, E
 
 				if(devices[DEVICE_PATCHES]->readFile(&patchFile, NULL, 0) != 0) {
 					devices[DEVICE_PATCHES]->seekFile(&patchFile, 16*1024*1024, DEVICE_HANDLER_SEEK_SET);
-					devices[DEVICE_PATCHES]->writeFile(&patchFile, NULL, 16*1024*1024);
+					devices[DEVICE_PATCHES]->writeFile(&patchFile, NULL, 0);
 					devices[DEVICE_PATCHES]->closeFile(&patchFile);
 				}
 
+				devices[DEVICE_PATCHES]->writeFile(&patchFile, NULL, 0); // open in write mode
 				if(getFragments(DEVICE_PATCHES, &patchFile, &fragList, &numFrags, FRAGS_CARD_B, 0, 31.5*1024*1024))
 					*(vu8*)VAR_CARD_B_ID = (patchFile.size * 8/1024/1024) & 0xFC;
-				// devices[DEVICE_PATCHES]->closeFile(&patchFile);
 			}
 		}
 		

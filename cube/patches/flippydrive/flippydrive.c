@@ -249,11 +249,12 @@ bool do_read_write_async(void *buffer, uint32_t length, uint32_t offset, uint64_
 	}
 	else
 	{
+		offset = offset >> 2;
 		command |= DI_CMD_READ << 24;
 	}
 
 	// file read
-	return gcode_push_queue(buffer, length, offset >> 2, sector, command, callback);
+	return gcode_push_queue(buffer, length, offset, sector, command, callback);
 }
 
 bool do_read_disc(void *buffer, uint32_t length, uint32_t offset, const frag_t *frag, frag_callback callback)
