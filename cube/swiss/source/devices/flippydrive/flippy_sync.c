@@ -430,7 +430,7 @@ int dvd_custom_rename(char *oldName, char* newName) {
     _di_regs[DI_SR] = (DI_SR_BRKINTMASK | DI_SR_TCINTMASK | DI_SR_DEINT | DI_SR_DEINTMASK);
 	_di_regs[DI_CVR] = 0; // clear cover int
 
-    _di_regs[DI_CMDBUF0] = DVD_FLIPPY_FILEAPI_BASE | IPC_FILE_MKDIR;
+    _di_regs[DI_CMDBUF0] = DVD_FLIPPY_FILEAPI_BASE | IPC_FILE_RENAME;
     _di_regs[DI_CMDBUF1] = 0;
 	_di_regs[DI_CMDBUF2] = 0;
 

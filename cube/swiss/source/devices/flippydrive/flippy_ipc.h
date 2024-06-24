@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 #define FLIPPY_IPC_MAJORVER = 1;
-#define FLIPPY_IPC_MINORVER = 2;
+#define FLIPPY_IPC_MINORVER = 3;
 
 #define GCN_ALIGNED(type) type __attribute__((aligned(32)))
 
@@ -35,6 +35,7 @@
 #define IPC_FILE_SEEK_RESPONSE_LEN      0
 #define IPC_FILE_UNLINK_RESPONSE_LEN    0
 #define IPC_FILE_MKDIR_RESPONSE_LEN     0
+#define IPC_FILE_RENAME_RESPONSE_LEN    0
 #define IPC_FILE_READDIR_RESPONSE_LEN sizeof(file_entry_t)
 
 #define IPC_WRITE_PAYLOAD_MAX_LEN       FD_IPC_MAXRESP-32
@@ -44,6 +45,7 @@
 typedef enum {
     IPC_READ_STATUS        = 0x00,
     IPC_SET_DEFAULT_FD     = 0x01, //Purely 2040
+    IPC_RELOAD_CONFIG      = 0x02, //Purely 2040
 
     IPC_RESET              = 0x05, //Purely 2040
     IPC_FS_INFO            = 0x06,
@@ -60,7 +62,7 @@ typedef enum {
     IPC_RESERVED0          = 0x10,
     IPC_FILE_OPEN_FLASH    = 0x11, //Purely 2040
     IPC_FILE_UNLINK_FLASH  = 0x12, //Purely 2040
-    IPC_RESERVED3          = 0x13,
+    IPC_FILE_RENAME        = 0x13,
 
     IPC_CMD_MAX            = 0x1F
 } ipc_command_type_t;
@@ -70,7 +72,8 @@ typedef struct
     uint32_t result;
     uint64_t fsize;
     uint8_t fd; //Valid after open
-    uint8_t pad[19];
+    uint8_t flags;
+    uint8_t pad[18];
 } file_status_t;
 
 ASSERT_SIZE_MULTIPLE_OF_32(file_status_t);
@@ -155,6 +158,15 @@ typedef struct
 
 ASSERT_SIZE_MULTIPLE_OF_32(ipc_req_mkdir_t);
 
+typedef struct
+{
+    ipc_req_header_t hdr;
+    file_entry_t oldfile;
+    file_entry_t newfile;
+} ipc_req_rename_t;
+
+ASSERT_SIZE_MULTIPLE_OF_32(ipc_req_rename_t);
+
 enum file_entry_type_enum {
     FILE_ENTRY_TYPE_FILE = 0,
     FILE_ENTRY_TYPE_DIR = 1,
@@ -166,7 +178,11 @@ enum file_entry_type_enum {
 #pragma pack(pop)
 
 static const size_t ipc_payloadlen[IPC_CMD_MAX] = {
-    0, 0, 0, 0, 0,
+    0,                    // Read status
+    0,                    // Set default fd
+    0,                    // reload config
+    0, 
+    0,
     0,                    // RESET
     0,                    // FS_INFO
     sizeof(file_entry_t), // FILE_MKDIR
@@ -179,7 +195,9 @@ static const size_t ipc_payloadlen[IPC_CMD_MAX] = {
     sizeof(file_entry_t), // FILE_UNLINK
     0,                    // READDIR
 
-    IPC_RESERVED0_SIZE, // RESERVED0
-    0,                  // FILE_OPEN_FLASH is purely internal to RP2040 and has no meaning over IPC
-    0,                  // FILE_UNLINK_FLASH is purely internal
+    IPC_RESERVED0_SIZE,   // RESERVED0
+    0,                    // FILE_OPEN_FLASH is purely internal to RP2040 and has no meaning over IPC
+    0,                    // FILE_UNLINK_FLASH is purely internal
+    sizeof(file_entry_t)*2, // FILE_RENAME
+
 };
