@@ -1,6 +1,6 @@
 #---------------------------------------------------------------------------------
 REVISION  = git rev-list HEAD | wc -l
-SVN_REVISION = swiss_r$(shell $(REVISION))
+SVN_REVISION = swiss_r$(shell $(REVISION))-fd
 
 DIR     = $(DEVKITPPC)/bin
 BIN2S   = $(DEVKITPRO)/tools/bin/bin2s
