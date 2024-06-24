@@ -262,6 +262,7 @@ s32 deviceHandler_FlippyDrive_writeFile(file_handle* file, const void* buffer, u
 
 	GCN_ALIGNED(file_status_t) status;
 	int err = dvd_custom_status(&status);
+	print_gecko("err: %d, status.result: %d\n", err, status.result);
 	if (err || status.result != 0) {
 		print_gecko("Failed to open file %s\n", filename);
 		return -1;
@@ -391,7 +392,7 @@ s32 deviceHandler_FlippyDrive_setupFile(file_handle* file, file_handle* file2, E
 
 				if(getFragments(DEVICE_PATCHES, &patchFile, &fragList, &numFrags, FRAGS_CARD_A, 0, 31.5*1024*1024))
 					*(vu8*)VAR_CARD_A_ID = (patchFile.size * 8/1024/1024) & 0xFC;
-				devices[DEVICE_PATCHES]->closeFile(&patchFile);
+				// devices[DEVICE_PATCHES]->closeFile(&patchFile);
 			}
 
 			if(devices[DEVICE_PATCHES] != &__device_sd_b) {
@@ -401,13 +402,13 @@ s32 deviceHandler_FlippyDrive_setupFile(file_handle* file, file_handle* file2, E
 
 				if(devices[DEVICE_PATCHES]->readFile(&patchFile, NULL, 0) != 0) {
 					devices[DEVICE_PATCHES]->seekFile(&patchFile, 16*1024*1024, DEVICE_HANDLER_SEEK_SET);
-					devices[DEVICE_PATCHES]->writeFile(&patchFile, NULL, 0);
+					devices[DEVICE_PATCHES]->writeFile(&patchFile, NULL, 16*1024*1024);
 					devices[DEVICE_PATCHES]->closeFile(&patchFile);
 				}
 
 				if(getFragments(DEVICE_PATCHES, &patchFile, &fragList, &numFrags, FRAGS_CARD_B, 0, 31.5*1024*1024))
 					*(vu8*)VAR_CARD_B_ID = (patchFile.size * 8/1024/1024) & 0xFC;
-				devices[DEVICE_PATCHES]->closeFile(&patchFile);
+				// devices[DEVICE_PATCHES]->closeFile(&patchFile);
 			}
 		}
 		
