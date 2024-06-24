@@ -22,7 +22,7 @@ usbgeckopatch: usbgecko.bin
 wkfpatch: wkf.bin wkf.card.bin wkf.dtk.bin
 fsppatch: fsp.bin fsp.dtk.bin fsp.eth.bin
 gcloaderpatch: gcloader-v1.bin gcloader-v1.card.bin gcloader-v2.bin gcloader-v2.card.bin gcloader-v2.dtk.bin gcloader-v2.eth.bin
-flippydrivepatch: flippydrive.bin #flippydrive.card.bin
+flippydrivepatch: flippydrive.bin flippydrive.card.bin
 
 clean:
 	@rm -f *.bin *.elf *.o
@@ -782,4 +782,26 @@ flippydrive.bin:
 	@$(OBJDUMP) -D flippydrive.elf > $(DISASM)/flippydrive.txt
 	@$(OBJCOPY) -O binary --set-section-flags .bss.*=alloc,load,contents flippydrive.elf flippydrive.bin
 	@$(BIN2S) -H $(DEST)/flippydrive_bin.h flippydrive.bin > $(DEST)/flippydrive.bin.s
+	@rm -f *.bin *.elf *.o
+
+flippydrive.card.bin:
+	@echo Building FlippyDrive Patch + CARD ...
+
+
+
+	@$(CC) -Os $(OPTS) -c base/base.S
+	@$(CC) -Os $(OPTS) -c base/emulator.c -DASYNC_READ -DCARD_EMULATOR -DGCODE -DFLIPPY
+	@$(CC) -Os $(OPTS) -c base/emulator_card.c -DASYNC_READ
+	@$(CC) -Os $(OPTS) -c base/frag.c -DDEVICE_PATCHES=1
+	@$(CC) -Os $(OPTS) -c base/interrupt.c -DIRQ_MASK=0b00000000000000000000010000000000
+	@$(CC) -Os $(OPTS) -c base/ipl.c
+	@$(CC) -Os $(OPTS) -c flippydrive/flippydrive.c -DQUEUE_SIZE=4
+	@$(CC) -Os $(OPTS) -c usbgecko/uart.c
+	@$(CC) -Os $(OPTS) -c base/dolphin/os.c
+	@$(CC) -Os $(OPTS) -c base/memcpy.S
+	@$(CC) -Os $(OPTS) -o flippydrive.card.elf -T base/base.ld -T base/common.ld -T base/dolphin/os.ld base.o emulator.o emulator_card.o frag.o interrupt.o ipl.o flippydrive.o uart.o os.o memcpy.o
+	@mkdir -p $(DISASM)
+	@$(OBJDUMP) -D flippydrive.card.elf > $(DISASM)/flippydrive.card.txt
+	@$(OBJCOPY) -O binary --set-section-flags .bss.*=alloc,load,contents flippydrive.card.elf flippydrive.card.bin
+	@$(BIN2S) -H $(DEST)/flippydrive_card_bin.h flippydrive.card.bin > $(DEST)/flippydrive.card.bin.s
 	@rm -f *.bin *.elf *.o
