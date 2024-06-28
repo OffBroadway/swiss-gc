@@ -250,7 +250,10 @@ bool do_read_write_async(void *buffer, uint32_t length, uint32_t offset, uint64_
 	else
 	{
 		offset = offset >> 2;
-		command |= DI_CMD_READ << 24;
+		if(length)
+			command |= DI_CMD_READ << 24;
+		else
+			command |= DI_CMD_SEEK << 24;
 	}
 
 	// file read
