@@ -509,7 +509,7 @@ char* deviceHandler_FlippyDrive_status(file_handle* file) { return 0; }
 u32 deviceHandler_FlippyDrive_emulated() {
 	if (devices[DEVICE_PATCHES]) {
 		if (swissSettings.emulateMemoryCard)
-			return EMU_READ | EMU_MEMCARD | EMU_BUS_ARBITER;
+			return EMU_READ | /*EMU_MEMCARD |*/ EMU_BUS_ARBITER;
 		else
 			return EMU_READ | EMU_BUS_ARBITER;
 	} else
