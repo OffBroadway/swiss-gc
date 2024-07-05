@@ -47,7 +47,7 @@
 #endif
 #define SECTOR_SIZE 512
 
-	static struct {
+static struct {
 	char (*buffer)[SECTOR_SIZE];
 	uint32_t last_sector;
 	struct {

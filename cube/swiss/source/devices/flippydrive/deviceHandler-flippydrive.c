@@ -296,6 +296,7 @@ s32 deviceHandler_FlippyDrive_writeFile(file_handle* file, const void* buffer, u
 		file->fileBase = status.fd;
 	} else {
 		dvd_custom_close(status.fd);
+		file->fileBase = 0;
 	}
 
 	file->offset += length;

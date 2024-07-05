@@ -2770,7 +2770,7 @@ void menu_loop()
 						break;
 					case MENU_EXIT:
 						DrawShutdown();
-						SYS_ResetSystem(SYS_HOTRESET, 0, TRUE);
+						exit(0);
 						__builtin_unreachable();
 						break;
 				}
