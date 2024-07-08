@@ -383,6 +383,10 @@ int install_code(int final)
 			// 	patch     = flippydrive_card_bin;
 			// 	patchSize = flippydrive_card_bin_size;
 			// 	break;
+			case EMU_READ | EMU_ETHERNET | EMU_BUS_ARBITER:
+				patch     = flippydrive_eth_bin;
+				patchSize = flippydrive_eth_bin_size;
+				break;
 			default:
 				return 0;
 		}

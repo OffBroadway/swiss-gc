@@ -53,6 +53,7 @@ typedef struct FuncPattern
 #include "gcloader_v2_eth_bin.h"
 #include "flippydrive_bin.h"
 #include "flippydrive_card_bin.h"
+#include "flippydrive_eth_bin.h"
 
 /* SDK patches */
 #include "backwards_memcpy_bin.h"
