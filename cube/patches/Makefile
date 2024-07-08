@@ -806,10 +806,10 @@ flippydrive.card.bin:
 flippydrive.eth.bin:
 	@echo Building FlippyDrive Patch + ETH ...
 	@$(CC) -Os $(OPTS) -c base/base.S
-	@$(CC) -Os $(OPTS) -c base/emulator.c -DASYNC_READ -DBBA -DETH_EMULATOR -DGCODE -DNO_VIDEO
+	@$(CC) -Os $(OPTS) -c base/emulator.c -DASYNC_READ -DBBA -DETH_EMULATOR -DGCODE -DFLIPPY -DNO_VIDEO
 	@$(CC) -Os $(OPTS) -c base/emulator_eth.c
 	@$(CC) -Os $(OPTS) -c base/frag.c
-	@$(CC) -Os $(OPTS) -c base/interrupt.c -DIRQ_MASK=0b00000000000000000000010000000000
+	@$(CC) -Os $(OPTS) -c base/interrupt.c -DIRQ_MASK=0b00000000010010000000010001000000
 	@$(CC) -Os $(OPTS) -c base/ipl.c
 	@$(CC) -Os $(OPTS) -c flippydrive/flippydrive.c -DQUEUE_SIZE=4
 	@$(CC) -Os $(OPTS) -c bba/enc28j60.c
