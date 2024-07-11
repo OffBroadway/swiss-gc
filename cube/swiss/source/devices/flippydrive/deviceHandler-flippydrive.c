@@ -511,10 +511,13 @@ u32 deviceHandler_FlippyDrive_emulated() {
 	if (devices[DEVICE_PATCHES]) {
 		if (swissSettings.emulateMemoryCard)
 			return EMU_READ | /*EMU_MEMCARD |*/ EMU_BUS_ARBITER;
+		else if (swissSettings.emulateEthernet && (devices[DEVICE_CUR]->emulable & EMU_ETHERNET))
+			return EMU_READ | EMU_ETHERNET | EMU_BUS_ARBITER;
 		else
 			return EMU_READ | EMU_BUS_ARBITER;
-	} else
+	} else {
 		return EMU_READ;
+	}
 }
 
 DEVICEHANDLER_INTERFACE __device_flippydrive = {

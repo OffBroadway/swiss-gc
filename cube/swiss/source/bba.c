@@ -49,6 +49,7 @@ static void *net_thread_func(void *arg)
 		if (ifname[0] == 'E' && strchr("2AB", ifname[1])) {
 			if (__device_gcloader.features & FEAT_PATCHES)
 				__device_gcloader.emulable |= EMU_ETHERNET;
+			__device_flippydrive.emulable |= EMU_ETHERNET;
 			__device_ata_c.emulable |= EMU_ETHERNET;
 			__device_sd_c.emulable |= EMU_ETHERNET;
 			__device_sd_a.emulable |= EMU_ETHERNET;
