@@ -11,6 +11,7 @@ void updateVideoMode(GXRModeObj *m);
 void setVideoMode(GXRModeObj *m);
 void setDisableVideo(bool disabled);
 bool getDisableVideo();
+void reenableVideo();
 char* getVideoModeString();
 GXRModeObj* getVideoMode();
 GXRModeObj* getVideoModeFromSwissSetting(int uiVMode);

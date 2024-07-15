@@ -2177,6 +2177,7 @@ static void *videoUpdate(void *videoEventQueue) {
 
 		LWP_MutexUnlock(_videomutex);
 		VIDEO_SetNextFramebuffer(xfb[whichfb]);
+		VIDEO_SetBlack(getDisableVideo());
 		VIDEO_Flush();
 		VIDEO_WaitVSync();
 	}

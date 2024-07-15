@@ -739,6 +739,7 @@ fail:
 		free(buffer);
 		DrawDispose(progBox);
 		if(message) {
+			reenableVideo();
 			uiDrawObj_t *msgBox = DrawPublish(DrawMessageBox(D_FAIL, message));
 			sleep(2);
 			DrawDispose(msgBox);

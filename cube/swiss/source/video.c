@@ -192,13 +192,18 @@ void updateVideoMode(GXRModeObj *m) {
 
 static bool disableVideoOutput = false;
 void setDisableVideo(bool disabled) {
-	if (disabled) {
-		disableVideoOutput = true;
-	}
+	disableVideoOutput = disabled;
 }
 
 bool getDisableVideo() {
 	return disableVideoOutput;
+}
+
+void reenableVideo() {
+	setDisableVideo(false);
+
+	GXRModeObj *vmode = getVideoMode();
+	updateVideoMode(vmode);
 }
 
 void setVideoMode(GXRModeObj *m) {
@@ -215,7 +220,7 @@ void setVideoMode(GXRModeObj *m) {
 	VIDEO_ClearFrameBuffer (m, xfb[1], COLOR_BLACK);
 	VIDEO_SetNextFramebuffer (xfb[0]);
 	VIDEO_SetPostRetraceCallback (ProperScanPADS);
-	VIDEO_SetBlack (disableVideoOutput);
+	VIDEO_SetBlack (getDisableVideo());
 	VIDEO_Flush ();
 	VIDEO_WaitVSync ();
 	if (m->viTVMode & VI_NON_INTERLACE) VIDEO_WaitVSync();
