@@ -10,6 +10,8 @@ static GXRModeObj *vmode;		//Graphics Mode Object
 u32 *xfb[2] = { NULL, NULL };	//Framebuffers
 int whichfb = 0;				//Frame buffer toggle
 
+bool disableVideoOutput = false; // Disable video output
+
 //Video Modes (strings)
 #define NtscIntStr     "NTSC 480i"
 #define NtscDsStr      "NTSC 240p"

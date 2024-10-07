@@ -1260,6 +1260,7 @@ fail:
 	DrawDispose(progBox);
 fail_early:
 	if(message) {
+		disableVideoOutput = false;
 		uiDrawObj_t *msgBox = DrawPublish(DrawMessageBox(D_FAIL, message));
 		wait_press_A();
 		DrawDispose(msgBox);
@@ -2848,6 +2849,7 @@ void menu_loop()
 						needsRefresh=1;
 						break;
 					case MENU_EXIT:
+#if 0
 						if(devices[DEVICE_CUR] != NULL) {
 							devices[DEVICE_CUR]->deinit(devices[DEVICE_CUR]->initial);
 						}
@@ -2856,7 +2858,11 @@ void menu_loop()
 							flippy_reset();
 						}
 						DrawShutdown();
-						SYS_ResetSystem(SYS_HOTRESET, 0, !swissSettings.hasFlippyDrive);
+						SYS_ResetSystem(SYS_HOTRESET, 0, TRUE);
+#else
+						DrawShutdown();
+						exit(0);
+#endif
 						__builtin_unreachable();
 						break;
 				}

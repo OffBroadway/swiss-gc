@@ -7,6 +7,7 @@
 
 extern u32 *xfb[2];
 extern int whichfb;
+extern bool disableVideoOutput;
 void updateVideoMode(GXRModeObj *m);
 void setVideoMode(GXRModeObj *m);
 char* getVideoModeString();
