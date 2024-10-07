@@ -54,7 +54,7 @@ INCLUDES	:=	include $(SOURCES) ..
 # options for code generation
 #---------------------------------------------------------------------------------
 
-CFLAGS		= -g -O2 -Wall -Wno-format-truncation -fno-strict-aliasing -D_GNU_SOURCE $(MACHDEP) $(INCLUDE) -D'GIT_COMMIT="$(shell git rev-parse --short HEAD)"' -D'GIT_REVISION="$(shell git rev-list HEAD | wc -l)"'
+CFLAGS		= -g -O2 -Wall -Wno-format-truncation -fno-strict-aliasing -D_GNU_SOURCE $(MACHDEP) $(INCLUDE) -D'GIT_COMMIT="$(shell git rev-parse --short HEAD)"' -D'GIT_REVISION="$(shell git rev-list master --count)-fd-$(shell git rev-list master..HEAD --count)"'
 CXXFLAGS	= $(CFLAGS)
 
 ASFLAGS		= $(MACHDEP) -mregnames -D_LANGUAGE_ASSEMBLY $(INCLUDE)
