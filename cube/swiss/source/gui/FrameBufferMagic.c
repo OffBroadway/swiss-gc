@@ -2185,6 +2185,22 @@ static void *videoUpdate(void *videoEventQueue) {
 			videoDrawEvent(videoEvent);
 			videoEventQueueEntry = videoEventQueueEntry->next;
 		}
+
+		// Handle Black
+		if (disableVideoOutput) {
+			GX_InvalidateTexAll();
+			GX_LoadTexObj(&boxinnerTexObj, GX_TEXMAP0);
+
+			int x = 0;
+			int y = 0;
+			int width = 640;
+			int height = 480;
+			GXColor blackColor = {0, 0, 0, 255};
+
+			//Adjust for blank texture border
+			x-=32; y-=32; width+=64; height+=64;
+			_drawRect(x, y, width, height, 0, blackColor, 0.0f, width, 0.0f, height);
+		}
 		
 		//Copy EFB->XFB
 		GXRModeObj *vmode = getVideoMode();

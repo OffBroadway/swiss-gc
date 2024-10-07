@@ -194,6 +194,11 @@ int main(int argc, char *argv[])
 	memset(&swissSettings, 0 , sizeof(SwissSettings));
 	strcpy(swissSettings.flattenDir, "*/games");
 
+	// Check novideo param
+	if (argv && argv[0] != NULL && strstr(argv[0], "novideo") != NULL) {
+		disableVideoOutput = true;
+	}
+
 	// Register all devices supported (order matters for boot devices)
 	int i = 0;
 	for(i = 0; i < MAX_DEVICES; i++)
