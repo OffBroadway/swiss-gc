@@ -2897,7 +2897,6 @@ void menu_loop()
 						needsRefresh=1;
 						break;
 					case MENU_EXIT:
-#if 0
 						if(devices[DEVICE_CUR] != NULL) {
 							devices[DEVICE_CUR]->deinit(devices[DEVICE_CUR]->initial);
 						}
@@ -2906,11 +2905,7 @@ void menu_loop()
 							flippy_reset();
 						}
 						DrawShutdown();
-						SYS_ResetSystem(SYS_HOTRESET, 0, TRUE);
-#else
-						DrawShutdown();
-						exit(0);
-#endif
+						SYS_ResetSystem(SYS_HOTRESET, 0, !swissSettings.hasFlippyDrive);
 						__builtin_unreachable();
 						break;
 				}
